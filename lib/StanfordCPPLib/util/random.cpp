@@ -3,6 +3,8 @@
  * ----------------
  * This file implements the random.h interface.
  * 
+ * @version 2017/10/05
+ * - added randomFeedClear
  * @version 2017/09/28
  * - moved random 'feed' functions into autograder namespace
  * - ensure that randomly fed integers are within the specified range
@@ -16,12 +18,18 @@
  * - removed 'using namespace' statement
  */
 
-#include <util/random.h>
+#define INTERNAL_INCLUDE 1
+#include <random.h>
 #include <cstdlib>
 #include <cmath>
 #include <ctime>
+#include <iostream>
+#include <iomanip>
 #include <queue>
-#include "private/static.h"
+#include <sstream>
+#define INTERNAL_INCLUDE 1
+#include <private/static.h>
+#undef INTERNAL_INCLUDE
 
 /* Private function prototype */
 
@@ -35,6 +43,12 @@ STATIC_VARIABLE_DECLARE_COLLECTION_EMPTY(std::queue<double>, fixedReals)
 namespace autograder {
 void randomFeedBool(bool value) {
     STATIC_VARIABLE(fixedBools).push(value);
+}
+
+void randomFeedClear() {
+    STATIC_VARIABLE(fixedBools) = std::queue<bool>();
+    STATIC_VARIABLE(fixedInts) = std::queue<int>();
+    STATIC_VARIABLE(fixedReals) = std::queue<double>();
 }
 
 void randomFeedInteger(int value) {
@@ -77,11 +91,15 @@ int randomColor() {
     return rand() & 0x00ffffff;
 }
 
-// don't want to depend on gwindow.h
-extern std::string convertRGBToColor(int rgb);
-
+// see convertRGBToColor in gcolor.h (repeated here to avoid Qt dependency)
 std::string randomColorString() {
-    return convertRGBToColor(randomColor());
+    int rgb = randomColor();
+    std::ostringstream os;
+    os << std::hex << std::setfill('0') << std::uppercase << "#";
+    os << std::setw(2) << (rgb >> 16 & 0xFF);
+    os << std::setw(2) << (rgb >> 8 & 0xFF);
+    os << std::setw(2) << (rgb & 0xFF);
+    return os.str();
 }
 
 /*

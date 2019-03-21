@@ -4,6 +4,14 @@
  * This file exports the <code>Vector</code> class, which provides an
  * efficient, safe, convenient replacement for the array type in C++.
  *
+ * @version 2018/09/06
+ * - refreshed doc comments for new documentation generation
+ * @version 2018/01/07
+ * - added front, back, removeFront, removeBack, pop_front, pop_back, push_front
+ * @version 2017/11/15
+ * - added contains, indexOf, lastIndexOf, removeValue, reverse, shuffle, sort
+ * @version 2017/10/18
+ * - fix compiler warnings
  * @version 2016/12/09
  * - added iterator version checking support
  * @version 2016/09/24
@@ -33,24 +41,33 @@
  * - fixed bug in addAll method that was not returning reference properly.
  */
 
+#include <private/init.h>   // ensure that Stanford C++ lib is initialized
+
+#ifndef INTERNAL_INCLUDE
+#include <private/initstudent.h>   // insert necessary included code by student
+#endif // INTERNAL_INCLUDE
+
 #ifndef _vector_h
 #define _vector_h
 
+#include <algorithm>
 #include <initializer_list>
 #include <iostream>
 #include <iterator>
 #include <sstream>
 #include <string>
-#include <vector>
-#include <collections/collections.h>
-#include <system/error.h>
-#include <collections/hashcode.h>
-#include <util/random.h>
-#include <util/strlib.h>
 
-/*
- * Class: Vector<ValueType>
- * ------------------------
+#define INTERNAL_INCLUDE 1
+#include <collections.h>
+#define INTERNAL_INCLUDE 1
+#include <error.h>
+#define INTERNAL_INCLUDE 1
+#include <hashcode.h>
+#define INTERNAL_INCLUDE 1
+#include <random.h>
+#undef INTERNAL_INCLUDE
+
+/**
  * This class stores an ordered list of values similar to an array.
  * It supports traditional array selection using square brackets, but
  * also supports inserting and deleting elements.  It is similar in
@@ -60,261 +77,395 @@
 template <typename ValueType>
 class Vector {
 public:
-    /*
-     * Constructor: Vector
-     * Usage: Vector<ValueType> vec;
-     *        Vector<ValueType> vec(n, value);
-     * ---------------------------------------
-     * Initializes a new vector.  The default constructor creates an
-     * empty vector.  The second form creates an array with <code>n</code>
-     * elements, each of which is initialized to <code>value</code>;
-     * if <code>value</code> is missing, the elements are initialized
-     * to the default value for the type.
+    /**
+     * Initializes a new empty vector.
+     * @bigoh O(1)
      */
     Vector();
+
+    /**
+     * Initializes a new vector, creating an array with <code>n</code>
+     * elements, each of which is initialized to <code>value</code>.
+     * If <code>value</code> is missing, the elements are initialized
+     * to the default value for the type.
+     * @bigoh O(N)
+     */
     explicit Vector(int n, ValueType value = ValueType());
 
-    /*
-     * This constructor copies an STL vector.
-     */
-    /* implicit */ Vector(const std::vector<ValueType>& v);
-
-    /*
-     * This constructor uses an initializer list to set up the vector.
-     * Usage: Vector<int> vec {1, 2, 3};
+    /**
+     * Uses an initializer list to set up the vector.
+     * @bigoh O(N)
      */
     Vector(std::initializer_list<ValueType> list);
 
-    /*
-     * Destructor: ~Vector
-     * -------------------
+    /**
      * Frees any heap storage allocated by this vector.
+     * @bigoh O(1)
      */
     virtual ~Vector();
 
-    /*
-     * Method: add
-     * Usage: vec.add(value);
-     * ----------------------
+    /**
      * Adds a new value to the end of this vector.
+     * @bigoh O(1)
      */
     void add(const ValueType& value);
 
-    /*
-     * Method: addAll
-     * Usage: vec.addAll(v2);
-     * ----------------------
+    /**
      * Adds all elements of the given other vector to this vector.
-     * You may also pass an initializer list such as {1, 2, 3}.
      * Returns a reference to this vector.
      * Identical in behavior to the += operator.
+     * @bigoh O(N)
      */
     Vector<ValueType>& addAll(const Vector<ValueType>& v);
+
+    /**
+     * Adds all elements of the given initializer list to this vector.
+     * Returns a reference to this vector.
+     * Identical in behavior to the += operator.
+     * @bigoh O(N)
+     */
     Vector<ValueType>& addAll(std::initializer_list<ValueType> list);
 
-    /*
-     * Method: clear
-     * Usage: vec.clear();
-     * -------------------
+    /**
+     * Returns the element at index (size - 1) in this vector (without removing it).
+     * @throw ErrorException if vector is empty
+     * @bigoh O(1)
+     */
+    ValueType& back();
+
+    /**
+     * Returns the element at index (size - 1) in this vector (without removing it).
+     * @throw ErrorException if vector is empty
+     * @bigoh O(1)
+     */
+    const ValueType& back() const;
+
+    /**
      * Removes all elements from this vector.
+     * @bigoh O(1)
      */
     void clear();
-    
-    /*
-     * Method: ensureCapacity
-     * Usage: vec.ensureCapacity(n);
-     * -----------------------------
+
+    /**
+     * Returns true if the vector contains the given value.
+     * The ValueType must have an == operator to use this method.
+     * @bigoh O(N)
+     */
+    bool contains(const ValueType& value) const;
+
+    /**
      * Guarantees that the vector's internal array is at least the given length.
      * If necessary, resizes the array to be the given length or larger.
+     * @bigoh O(N)
      */
     void ensureCapacity(int cap);
 
-    /*
-     * Method: equals
-     * Usage: if (vec.equals(v2)) ...
-     * ------------------------------
+    /**
      * Compares two vectors for equality.
      * Returns <code>true</code> if this vector contains exactly the same
      * values as the given other vector.
      * Identical in behavior to the == operator.
+     * @bigoh O(N)
      */
     bool equals(const Vector<ValueType>& v) const;
-    
-    /*
-     * Method: get
-     * Usage: ValueType val = vec.get(index);
-     * --------------------------------------
-     * Returns the element at the specified index in this vector.  This
-     * method signals an error if the index is not in the array range.
+
+    /**
+     * Returns the element at index 0 in this vector (without removing it).
+     * @throw ErrorExceptoin if vector is empty
+     * @bigoh O(1)
+     */
+    ValueType& front();
+
+    /**
+     * Returns the element at index 0 in this vector (without removing it).
+     * @throw ErrorExceptoin if vector is empty
+     * @bigoh O(1)
+     */
+    const ValueType& front() const;
+
+    /**
+     * Returns the element at the specified index in this vector.
+     * Similar in behavior to the [] operator.
+     * @throw ErrorException if the index is not in the array range
+     * @bigoh O(1)
      */
     const ValueType& get(int index) const;
-    
-    /*
-     * Method: insert
-     * Usage: vec.insert(0, value);
-     * ----------------------------
+
+    /**
+     * Returns the index of the first occurrence of the given value.
+     * If the value is not found in the vector, returns -1.
+     * The ValueType must have an == operator to use this method.
+     * @bigoh O(N)
+     */
+    int indexOf(const ValueType& value) const;
+
+    /**
      * Inserts the element into this vector before the specified index.
-     * All subsequent elements are shifted one position to the right.  This
-     * method signals an error if the index is outside the range from 0
+     * All subsequent elements are shifted one position to the right.
+     * @throw ErrorException if the index is not in the array range from 0
      * up to and including the length of the vector.
+     * @bigoh O(N)
      */
     void insert(int index, const ValueType& value);
 
-    /*
-     * Method: isEmpty
-     * Usage: if (vec.isEmpty()) ...
-     * -----------------------------
+    /**
      * Returns <code>true</code> if this vector contains no elements.
+     * @bigoh O(1)
      */
     bool isEmpty() const;
-    
-    /*
-     * Method: mapAll
-     * Usage: vec.mapAll(fn);
-     * ----------------------
+
+    /**
+     * Returns the index of the last occurrence of the given value.
+     * If the value is not found in the vector, returns -1.
+     * The ValueType must have an == operator to use this method.
+     * @bigoh O(N)
+     */
+    int lastIndexOf(const ValueType& value) const;
+
+    /**
      * Calls the specified function on each element of the vector in
      * ascending index order.
+     * @bigoh O(N)
      */
     void mapAll(void (*fn)(ValueType)) const;
+
+    /**
+     * Calls the specified function on each element of the vector in
+     * ascending index order.
+     * @bigoh O(N)
+     */
     void mapAll(void (*fn)(const ValueType&)) const;
 
+    /**
+     * Calls the specified function on each element of the vector in
+     * ascending index order.
+     * @bigoh O(N)
+     */
     template <typename FunctorType>
     void mapAll(FunctorType fn) const;
-    
-    /*
-     * Method: push_back
-     * Usage: vec.push_back(value);
-     * ----------------------
-     * Adds a new value to the end of this vector.  This method is a synonym
-     * of the add method that is provided to ensure compatibility
-     * with the <code>vector</code> class in the Standard Template Library.
+
+    /**
+     * Removes and returns the first value of this vector.
+     * Equivalent to removeFront.
+     * @throw ErrorException if the vector is empty
+     * @bigoh O(N)
+     */
+    ValueType pop_front();
+
+    /**
+     * Removes and returns the last value of this vector.
+     * Equivalent to removeBack.
+     * @throw ErrorException if the vector is empty
+     * @bigoh O(1)
+     */
+    ValueType pop_back();
+
+    /**
+     * Adds a new value to the end of this vector.
+     * This method is a synonym of the add method that is provided to
+     * ensure compatibility with the STL <code>vector</code> class.
+     * @bigoh O(1)
      */
     void push_back(const ValueType& value);
 
-    /*
-     * Method: remove
-     * Usage: vec.remove(index);
-     * -------------------------
+    /**
+     * Adds a new value to the start of this vector.
+     * This method is equivalent to calling insert(0, value) and is provided to
+     * improve compatibility with the STL <code>vector</code> class.
+     * @bigoh O(N)
+     */
+    void push_front(const ValueType& value);
+
+    /**
      * Removes the element at the specified index from this vector.
-     * All subsequent elements are shifted one position to the left.  This
-     * method signals an error if the index is outside the array range.
+     * All subsequent elements are shifted one position to the left.
+     * @throw ErrorException if the index is not in the array range
+     * @bigoh O(N)
      */
     void remove(int index);
-    
-    /*
-     * Method: set
-     * Usage: vec.set(index, value);
-     * -----------------------------
+
+    /**
+     * Removes and returns the element at index 0 in this vector.
+     * @throw ErrorException if the vector is empty
+     * @bigoh O(N)
+     */
+    ValueType removeFront();
+
+    /**
+     * Removes and returns the element at index (size - 1) in this vector.
+     * @throw ErrorException if the vector is empty
+     * @bigoh O(1)
+     */
+    ValueType removeBack();
+
+    /**
+     * Removes the first occurrence of the element value from this vector.
+     * All subsequent elements are shifted one position to the left.
+     * If the vector does not contain the given value, has no effect.
+     * The ValueType must have an == operator to use this method.
+     * @bigoh O(N)
+     */
+    void removeValue(const ValueType& value);
+
+    /**
+     * Reverses the order of the elements in this vector.
+     * For example, if vector stores {1, 3, 4, 9}, changes it to store {9, 4, 3, 1}.
+     * @bigoh O(N)
+     */
+    void reverse();
+
+    /**
      * Replaces the element at the specified index in this vector with
      * a new value.  The previous value at that index is overwritten.
-     * This method signals an error if the index is not in the array range.
+     * Similar in behavior to the [] operator.
+     * @throw ErrorException if the index is not in the array range
+     * @bigoh O(1)
      */
     void set(int index, const ValueType& value);
     
-    /*
-     * Method: size
-     * Usage: int nElems = vec.size();
-     * -------------------------------
+    /**
      * Returns the number of elements in this vector.
+     * @bigoh O(1)
      */
     int size() const;
-    
-    /*
-     * Method: subList
-     * Usage: Vector<ValueType> sub = v.subList(start, length);
-     * --------------------------------------------------------
+
+    /**
+     * Rearranges the order of the elements in this vector into a random order.
+     * @bigoh O(N)
+     */
+    void shuffle();
+
+    /**
+     * Rearranges the order of the elements in this vector into sorted order.
+     * For example, if vector stores {9, 1, 4, 3}, changes it to store {1, 3, 4, 9}.
+     * The ValueType must have an operator < to call this method.
+     * @bigoh O(N log N)
+     */
+    void sort();
+
+    /**
      * Returns a new vector containing the given subset range of elements
      * from this vector. The new vector is a deep copy, not linked to this one.
-     * Throws an error if the range (start .. start + length) is not contained
-     * within the bounds of this vector, or if length is negative.
+     * @throw ErrorException if the range (start .. start + length) is not
+     *        within the bounds of this vector, or if length is negative
+     * @bigoh O(N)
      */
     Vector<ValueType> subList(int start, int length) const;
 
-    /*
-     * Returns an STL vector object with the same elements as this Vector.
-     */
-    std::vector<ValueType> toStlVector() const;
-
-    /*
-     * Method: toString
-     * Usage: string str = vec.toString();
-     * -----------------------------------
-     * Converts the vector to a printable string representation.
+    /**
+     * Converts the vector to a printable string representation
+     * such as "{10, 20, 30, 40}".
+     * @bigoh O(N)
      */
     std::string toString() const;
 
-    /*
-     * Operator: []
-     * Usage: vec[index]
-     * -----------------
+    /**
      * Overloads <code>[]</code> to select elements from this vector.
      * This extension enables the use of traditional array notation to
-     * get or set individual elements.  This method signals an error if
-     * the index is outside the array range.  The file supports two
-     * versions of this operator, one for <code>const</code> vectors and
-     * one for mutable vectors.
+     * get or set individual elements.
+     * @throw ErrorException if the index is not in the array range
+     * @bigoh O(1)
      */
     ValueType& operator [](int index);
+
+    /**
+     * Overloads <code>[]</code> to select elements from this vector.
+     * This extension enables the use of traditional array notation to
+     * get or set individual elements.
+     * @throw ErrorException if the index is not in the array range
+     * @bigoh O(1)
+     */
     const ValueType& operator [](int index) const;
 
-    /*
-     * Operator: +
-     * Usage: v1 + v2
-     * --------------
-     * Concatenates two vectors, or concatenates this vector with an
-     * initializer list such as {1, 2, 3}.
+    /**
+     * Concatenates two vectors and returns the result.
+     * @bigoh O(N)
      */
     Vector operator +(const Vector& v2) const;
+
+    /**
+     * Concatenates this vector with an initializer list such as {1, 2, 3},
+     * returning the result.
+     * @bigoh O(N)
+     */
     Vector operator +(std::initializer_list<ValueType> list) const;
 
-    /*
-     * Operator: +=
-     * Usage: v1 += v2;
-     *        v1 += value;
-     * -------------------
-     * Adds all of the elements from <code>v2</code> (or the single
-     * specified value) to <code>v1</code>.
-     * You can also pass an initializer list such as {1, 2, 3}.
-     * As a convenience, the <code>Vector</code> package also overloads the
-     * comma operator so that it is possible to initialize a vector like this:
-     *
-     *<pre>
-     *    Vector&lt;int&gt; digits;
-     *    digits += 0, 1, 2, 3, 4, 5, 6, 7, 8, 9;
-     *</pre>
+    /**
+     * Adds all of the elements from <code>v2</code> to the end of this vector.
+     * @bigoh O(N)
      */
     Vector& operator +=(const Vector& v2);
+
+    /**
+     * Adds all of the elements from the given initializer list to the end of
+     * the vector.
+     * @bigoh O(N)
+     */
     Vector& operator +=(std::initializer_list<ValueType> list);
+
+    /**
+     * Adds the single specified value) to the end of the vector.
+     * @bigoh O(1)
+     */
     Vector& operator +=(const ValueType& value);
 
 
-    /*
-     * Operator: ==
-     * Usage: if (vec1 == vec2) ...
-     * ----------------------------
+    /**
      * Compares two vectors for equality.
+     * The ValueType must have an == operator.
+     * @bigoh O(N)
      */
     bool operator ==(const Vector& v2) const;
 
-    /*
-     * Operator: !=
-     * Usage: if (vec1 != vec2) ...
-     * ----------------------------
+    /**
      * Compares two vectors for inequality.
+     * The ValueType must have a != operator.
+     * @bigoh O(N)
      */
     bool operator !=(const Vector& v2) const;
 
-    /*
-     * Operators: <, >, <=, >=
-     * Usage: if (vec1 < vec2) ...
-     * ---------------------------
+    /**
      * Relational operators to compare two vectors.
+     * Each element is compared pairwise to the corresponding element at the
+     * same index in the other vector; for example, we first check the values
+     * at index 0, then 1, and so on.
      * The <, >, <=, >= operators require that the ValueType has a < operator
      * so that the elements can be compared pairwise.
+     * @bigoh O(N)
      */
     bool operator <(const Vector& v2) const;
+
+    /**
+     * Relational operators to compare two vectors.
+     * Each element is compared pairwise to the corresponding element at the
+     * same index in the other vector; for example, we first check the values
+     * at index 0, then 1, and so on.
+     * The <, >, <=, >= operators require that the ValueType has a < operator
+     * so that the elements can be compared pairwise.
+     * @bigoh O(N)
+     */
     bool operator <=(const Vector& v2) const;
+
+    /**
+     * Relational operators to compare two vectors.
+     * Each element is compared pairwise to the corresponding element at the
+     * same index in the other vector; for example, we first check the values
+     * at index 0, then 1, and so on.
+     * The <, >, <=, >= operators require that the ValueType has a < operator
+     * so that the elements can be compared pairwise.
+     * @bigoh O(N)
+     */
     bool operator >(const Vector& v2) const;
+
+    /**
+     * Relational operators to compare two vectors.
+     * Each element is compared pairwise to the corresponding element at the
+     * same index in the other vector; for example, we first check the values
+     * at index 0, then 1, and so on.
+     * The <, >, <=, >= operators require that the ValueType has a < operator
+     * so that the elements can be compared pairwise.
+     * @bigoh O(N)
+     */
     bool operator >=(const Vector& v2) const;
 
     /*
@@ -350,7 +501,7 @@ private:
     ValueType* elements;        // a dynamic array of the elements
     int capacity;               // the allocated size of the array
     int count;                  // the number of elements in use
-    unsigned int m_version;     // structure version for detecting invalid iterators
+    unsigned int m_version = 0; // structure version for detecting invalid iterators
 
     /* Private methods */
 
@@ -377,30 +528,34 @@ private:
      */
 
 public:
-    /*
-     * Deep copying support
-     * --------------------
-     * This copy constructor and operator= are defined to make a deep copy,
-     * making it possible to pass or return vectors by value and assign
-     * from one vector to another.
+    /**
+     * Makes a deep copy, making it possible to pass or return vectors by value
+     * and assign from one vector to another.
+     * @bigoh O(N)
+     * @private
      */
     Vector(const Vector& src);
+
+    /**
+     * Makes a deep copy, making it possible to pass or return vectors by value
+     * and assign from one vector to another.
+     * @bigoh O(N)
+     * @private
+     */
     Vector& operator =(const Vector& src);
 
-    /*
-     * Operator: ,
-     * -----------
+    /**
      * Adds an element to the vector passed as the left-hand operatand.
      * This form makes it easier to initialize vectors in old versions of C++.
+     * @bigoh O(1)
      */
     Vector& operator ,(const ValueType& value);
 
-    /*
-     * Iterator support
-     * ----------------
+    /**
      * The classes in the StanfordCPPLib collection implement input
      * iterators so that they work symmetrically with respect to the
      * corresponding STL classes.
+     * @private
      */
     class iterator :
             public std::iterator<std::random_access_iterator_tag, ValueType> {
@@ -424,9 +579,9 @@ public:
             // empty
         }
 
-        iterator(const Vector* vp, int index)
-                : vp(vp),
-                  index(index) {
+        iterator(const Vector* theVec, int theIndex)
+                : vp(theVec),
+                  index(theIndex) {
             itr_version = vp->version();
         }
 
@@ -543,23 +698,26 @@ public:
         }
     };
 
-    /*
+    /**
      * Returns an iterator pointed at the beginning of this vector.
+     * @bigoh O(1)
      */
     iterator begin() const {
         return iterator(this, 0);
     }
 
-    /*
+    /**
      * Returns an iterator pointed just past the end of this vector.
+     * @bigoh O(1)
      */
     iterator end() const {
         return iterator(this, count);
     }
 
-    /*
+    /**
      * Returns the internal version of this collection.
      * This is used to check for invalid iterators and issue error messages.
+     * @bigoh O(1)
      */
     unsigned int version() const;
 };
@@ -577,8 +735,7 @@ template <typename ValueType>
 Vector<ValueType>::Vector()
         : elements(nullptr),
           capacity(0),
-          count(0),
-          m_version(0) {
+          count(0) {
     // empty
 }
 
@@ -586,10 +743,9 @@ template <typename ValueType>
 Vector<ValueType>::Vector(int n, ValueType value)
         : elements(nullptr),
           capacity(n),
-          count(n),
-          m_version(0) {
+          count(n) {
     if (n < 0) {
-        error("Vector::constructor: n cannot be negative: " + integerToString(n));
+        error("Vector::constructor: n cannot be negative");
     } else if (n > 0) {
         elements = new ValueType[n];
         for (int i = 0; i < n; i++) {
@@ -599,20 +755,8 @@ Vector<ValueType>::Vector(int n, ValueType value)
 }
 
 template <typename ValueType>
-Vector<ValueType>::Vector(const std::vector<ValueType>& v)
-        : m_version(0) {
-    count = v.size();
-    capacity = v.size();
-    elements = new ValueType[count];
-    for (int i = 0; i < count; i++) {
-        elements[i] = v[i];
-    }
-}
-
-template <typename ValueType>
 Vector<ValueType>::Vector(std::initializer_list<ValueType> list)
-        : count(0),
-          m_version(0) {
+        : count(0) {
     capacity = list.size();
     elements = new ValueType[capacity];
     addAll(list);
@@ -665,6 +809,22 @@ Vector<ValueType>& Vector<ValueType>::addAll(std::initializer_list<ValueType> li
 }
 
 template <typename ValueType>
+ValueType& Vector<ValueType>::back() {
+    if (isEmpty()) {
+        error("Vector::back: vector is empty");
+    }
+    return elements[count - 1];
+}
+
+template <typename ValueType>
+const ValueType& Vector<ValueType>::back() const {
+    if (isEmpty()) {
+        error("Vector::back: vector is empty");
+    }
+    return elements[count - 1];
+}
+
+template <typename ValueType>
 void Vector<ValueType>::clear() {
     if (elements) {
         delete[] elements;
@@ -673,6 +833,11 @@ void Vector<ValueType>::clear() {
     capacity = 0;
     elements = nullptr;
     m_version++;
+}
+
+template <typename ValueType>
+bool Vector<ValueType>::contains(const ValueType& value) const {
+    return indexOf(value) >= 0;
 }
 
 // implementation note: This method is public so clients can guarantee a given
@@ -708,7 +873,7 @@ bool Vector<ValueType>::equals(const Vector<ValueType>& v) const {
 template <typename ValueType>
 void Vector<ValueType>::expandCapacity() {
     capacity = std::max(1, capacity * 2);
-    ValueType *array = new ValueType[capacity];
+    ValueType* array = new ValueType[capacity];
     if (elements) {
         for (int i = 0; i < count; i++) {
             array[i] = elements[i];
@@ -719,9 +884,35 @@ void Vector<ValueType>::expandCapacity() {
 }
 
 template <typename ValueType>
+ValueType& Vector<ValueType>::front() {
+    if (isEmpty()) {
+        error("Vector::front: vector is empty");
+    }
+    return elements[0];
+}
+
+template <typename ValueType>
+const ValueType& Vector<ValueType>::front() const {
+    if (isEmpty()) {
+        error("Vector::front: vector is empty");
+    }
+    return elements[0];
+}
+
+template <typename ValueType>
 const ValueType& Vector<ValueType>::get(int index) const {
     checkIndex(index, 0, count-1, "get");
     return elements[index];
+}
+
+template <typename ValueType>
+int Vector<ValueType>::indexOf(const ValueType& value) const {
+    for (int i = 0; i < count; i++) {
+        if (elements[i] == value) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 /*
@@ -748,6 +939,16 @@ void Vector<ValueType>::insert(int index, const ValueType& value) {
 template <typename ValueType>
 bool Vector<ValueType>::isEmpty() const {
     return count == 0;
+}
+
+template <typename ValueType>
+int Vector<ValueType>::lastIndexOf(const ValueType& value) const {
+    for (int i = count - 1; i >= 0; i--) {
+        if (elements[i] == value) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 /*
@@ -779,8 +980,33 @@ void Vector<ValueType>::mapAll(FunctorType fn) const {
 }
 
 template <typename ValueType>
+ValueType Vector<ValueType>::pop_back() {
+    if (isEmpty()) {
+        error("Vector::pop_back: vector is empty");
+    }
+    ValueType last = elements[count - 1];
+    remove(count - 1);
+    return last;
+}
+
+template <typename ValueType>
+ValueType Vector<ValueType>::pop_front() {
+    if (isEmpty()) {
+        error("Vector::pop_front: vector is empty");
+    }
+    ValueType first = elements[0];
+    remove(0);
+    return first;
+}
+
+template <typename ValueType>
 void Vector<ValueType>::push_back(const ValueType& value) {
     insert(count, value);
+}
+
+template <typename ValueType>
+void Vector<ValueType>::push_front(const ValueType& value) {
+    insert(0, value);
 }
 
 template <typename ValueType>
@@ -791,6 +1017,31 @@ void Vector<ValueType>::remove(int index) {
     }
     count--;
     m_version++;
+}
+
+template <typename ValueType>
+ValueType Vector<ValueType>::removeBack() {
+    return pop_back();
+}
+
+template <typename ValueType>
+ValueType Vector<ValueType>::removeFront() {
+    return pop_front();
+}
+
+template <typename ValueType>
+void Vector<ValueType>::removeValue(const ValueType& value) {
+    int index = indexOf(value);
+    if (index >= 0) {
+        remove(index);
+    }
+}
+
+template <typename ValueType>
+void Vector<ValueType>::reverse() {
+    for (int i = 0; i < count / 2; i++) {
+        std::swap(elements[i], elements[count - 1 - i]);
+    }
 }
 
 template <typename ValueType>
@@ -805,6 +1056,21 @@ int Vector<ValueType>::size() const {
 }
 
 template <typename ValueType>
+void Vector<ValueType>::shuffle() {
+    for (int i = 0; i < count; i++) {
+        int j = randomInteger(i, count - 1);
+        if (i != j) {
+            std::swap(elements[i], elements[j]);
+        }
+    }
+}
+
+template <typename ValueType>
+void Vector<ValueType>::sort() {
+    std::sort(begin(), end());
+}
+
+template <typename ValueType>
 Vector<ValueType> Vector<ValueType>::subList(int start, int length) const {
     checkIndex(start, 0, count, "subList");
     checkIndex(start + length, 0, count, "subList");
@@ -816,15 +1082,6 @@ Vector<ValueType> Vector<ValueType>::subList(int start, int length) const {
         result.add(get(i));
     }
     return result;
-}
-
-template <typename ValueType>
-std::vector<ValueType> Vector<ValueType>::toStlVector() const {
-    std::vector<ValueType> v;
-    for (int i = 0; i < count; i++) {
-        v.push_back(elements[i]);
-    }
-    return v;
 }
 
 template <typename ValueType>
@@ -1017,15 +1274,7 @@ const T& randomElement(const Vector<T>& vec) {
  */
 template <typename T>
 void shuffle(Vector<T>& v) {
-    for (int i = 0, length = v.size(); i < length; i++) {
-        int j = randomInteger(i, length - 1);
-        if (i != j) {
-            T temp = v[i];
-            v[i] = v[j];
-            v[j] = temp;
-        }
-    }
+    v.shuffle();
 }
 
-#include <private/init.h>   // ensure that Stanford C++ lib is initialized
 #endif // _vector_h

@@ -6,15 +6,22 @@
  * See plainconsole.h for documentation of each function.
  *
  * @author Marty Stepp
+ * @version 2017/11/12
+ * - changed limited stream to throw error rather than raise SIGABRT for better displaying
+ * @version 2017/10/20
+ * - fixed compiler warning about 0 vs nullptr
  * @version 2015/10/21
  * @since 2015/10/21
  */
 
-#include "plainconsole.h"
+#define INTERNAL_INCLUDE 1
+#include <plainconsole.h>
 #include <csignal>
 #include <iostream>
 #include <string>
-#include <system/error.h>
+#define INTERNAL_INCLUDE 1
+#include <error.h>
+#undef INTERNAL_INCLUDE
 
 namespace plainconsole {
 /*
@@ -131,7 +138,7 @@ public:
             : outstream(&buf),
               outputLimit(limit),
               outputPrinted(0) {
-        setp(0, 0);   // // no buffering, overflow on every char
+        setp(nullptr, nullptr);   // // no buffering, overflow on every char
     }
 
     virtual void setOutputLimit(int limit) {
@@ -146,7 +153,8 @@ public:
             // kill the program
             // (use a signal rather than error/exception
             // so student won't try to catch it)
-            raise(SIGABRT);
+            // error("Excessive output printed; you may have an infinite loop in your code.");
+            raise(SIGUSR1);
         } else {
             outstream.put(ch);
         }
@@ -165,8 +173,8 @@ void setOutputLimit(int limit) {
 }
 
 void setEcho(bool value) {
-    static EchoingStreambuf* echobufIn = NULL;
-    static std::streambuf* oldBuf = NULL;
+    static EchoingStreambuf* echobufIn = nullptr;
+    static std::streambuf* oldBuf = nullptr;
     
     if (!echobufIn && value) {
         // start to echo user input pulled from cin
@@ -176,8 +184,8 @@ void setEcho(bool value) {
     } else if (echobufIn && !value) {
         // stop echo
         std::cin.rdbuf(oldBuf);
-        oldBuf = NULL;
-        echobufIn = NULL;
+        oldBuf = nullptr;
+        echobufIn = nullptr;
     }
 }
 

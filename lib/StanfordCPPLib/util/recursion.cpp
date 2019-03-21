@@ -1,16 +1,26 @@
-#include "recursion.h"
-#include <system/exceptions.h>
-#include <system/call_stack.h>
+/*
+ * File: recursion.cpp
+ * -------------------
+ * This file implements the recursion.h interface.
+ */
+
+#define INTERNAL_INCLUDE 1
+#include <recursion.h>
+#define INTERNAL_INCLUDE 1
+#include <exceptions.h>
+#define INTERNAL_INCLUDE 1
+#include "call_stack.h"
+#undef INTERNAL_INCLUDE
 
 int getRecursionIndentLevel() {
     // constructing the following object jumps into fancy code in call_stack_gcc/windows.cpp
     // to rebuild the stack trace; implementation differs for each operating system
     stacktrace::call_stack trace;
-    std::vector<stacktrace::entry> entries = trace.stack;
+    Vector<stacktrace::entry> entries = trace.stack;
 
     std::string currentFunction = "";
     int currentFunctionCount = 0;
-    for (size_t i = 0; i < entries.size(); ++i) {
+    for (int i = 0; i < entries.size(); ++i) {
         // remove references to std:: namespace
         if (exceptions::shouldFilterOutFromStackTrace(entries[i].function)
                 || entries[i].function.find("recursionIndent(") != std::string::npos

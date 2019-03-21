@@ -4,6 +4,10 @@
  * This file exports the <code>HashSet</code> class, which
  * implements an efficient abstraction for storing sets of values.
  * 
+ * @version 2018/03/10
+ * - added methods front, back
+ * @version 2016/12/09
+ * - added iterator version checking support (implicitly via HashMap)
  * @version 2016/12/06
  * - slight speedup bug fix in equals() method
  * @version 2016/09/24
@@ -25,16 +29,29 @@
  * - removed foreach patch
  */
 
+#include <private/init.h>   // ensure that Stanford C++ lib is initialized
+
+#ifndef INTERNAL_INCLUDE
+#include <private/initstudent.h>   // insert necessary included code by student
+#endif // INTERNAL_INCLUDE
+
 #ifndef _hashset_h
 #define _hashset_h
 
 #include <initializer_list>
 #include <iostream>
-#include<collections/collections.h>
-#include <system/error.h>
-#include <collections/hashcode.h>
-#include <collections/hashmap.h>
-#include <collections/vector.h>
+
+#define INTERNAL_INCLUDE 1
+#include <collections.h>
+#define INTERNAL_INCLUDE 1
+#include <error.h>
+#define INTERNAL_INCLUDE 1
+#include <hashcode.h>
+#define INTERNAL_INCLUDE 1
+#include <hashmap.h>
+#define INTERNAL_INCLUDE 1
+#include <vector.h>
+#undef INTERNAL_INCLUDE
 
 /*
  * Class: HashSet<ValueType>
@@ -99,6 +116,20 @@ public:
     HashSet<ValueType>& addAll(std::initializer_list<ValueType> list);
 
     /*
+     * Method: back
+     * Usage: ValueType value = set.back();
+     * ------------------------------------
+     * Returns the last value in the set in the order established by the
+     * <code>foreach</code> macro.
+     * Note that since the values are stored in an unpredictable order,
+     * this is not necessarily equal to the "largest" value in any particular
+     * sorting order; it is just the value that would happen to be emitted last
+     * from a for-each loop.
+     * If the set is empty, generates an error.
+     */
+    ValueType back() const;
+
+    /*
      * Method: clear
      * Usage: set.clear();
      * -------------------
@@ -145,6 +176,21 @@ public:
      * generates an error.
      */
     ValueType first() const;
+
+    /*
+     * Method: front
+     * Usage: ValueType value = set.front();
+     * ------------------------------------
+     * Returns the last value in the set in the order established by the
+     * <code>foreach</code> macro.
+     * Note that since the values are stored in an unpredictable order,
+     * this is not necessarily equal to the "largest" value in any particular
+     * sorting order; it is just the value that would happen to be emitted last
+     * from a for-each loop.
+     * If the set is empty, generates an error.
+     * Equivalent to first.
+     */
+    ValueType front() const;
 
     /*
      * Method: insert
@@ -509,6 +555,14 @@ HashSet<ValueType>& HashSet<ValueType>::addAll(std::initializer_list<ValueType> 
 }
 
 template <typename ValueType>
+ValueType HashSet<ValueType>::back() const {
+    if (isEmpty()) {
+        error("HashSet::back: set is empty");
+    }
+    return map.back();
+}
+
+template <typename ValueType>
 void HashSet<ValueType>::clear() {
     map.clear();
 }
@@ -559,7 +613,15 @@ ValueType HashSet<ValueType>::first() const {
     if (isEmpty()) {
         error("HashSet::first: set is empty");
     }
-    return *begin();
+    return map.front();
+}
+
+template <typename ValueType>
+ValueType HashSet<ValueType>::front() const {
+    if (isEmpty()) {
+        error("HashSet::front: set is empty");
+    }
+    return map.front();
 }
 
 template <typename ValueType>
@@ -819,7 +881,5 @@ template <typename T>
 const T& randomElement(const HashSet<T>& set) {
     return stanfordcpplib::collections::randomElement(set);
 }
-
-#include <private/init.h>   // ensure that Stanford C++ lib is initialized
 
 #endif // _hashset_h

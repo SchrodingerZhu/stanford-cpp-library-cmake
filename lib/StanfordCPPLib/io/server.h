@@ -8,12 +8,21 @@
  * - initial version
  */
 
+#include <private/init.h>   // ensure that Stanford C++ lib is initialized
+
+#ifndef INTERNAL_INCLUDE
+#include <private/initstudent.h>   // insert necessary included code by student
+#endif // INTERNAL_INCLUDE
+
 #ifndef _server_h
 #define _server_h
 
 #include <iostream>
 #include <string>
-#include <graphics/gevents.h>
+
+#define INTERNAL_INCLUDE 1
+#include <gevents.h>
+#undef INTERNAL_INCLUDE
 
 namespace HttpServer {
 const int DEFAULT_PORT = 8080;
@@ -23,16 +32,14 @@ std::string getContentType(const std::string& extension);
 std::string getErrorMessage(int httpErrorCode);
 std::string getUrlExtension(const std::string& url);
 bool isRunning();
-void sendResponse(const GServerEvent& event, const std::string& responseText,
+void sendResponse(const GEvent& event, const std::string& responseText,
                   const std::string& contentType = "");
-void sendResponseError(const GServerEvent& event, int httpErrorCode,
+void sendResponseError(const GEvent& event, int httpErrorCode,
                   const std::string& errorMessage = "");
-void sendResponseFile(const GServerEvent& event, const std::string& responseFilePath,
+void sendResponseFile(const GEvent& event, const std::string& responseFilePath,
                       const std::string& contentType = "" /* auto */);
 void startServer(int port = DEFAULT_PORT);
 void stopServer();
 } // namespace HttpServer
-
-#include <private/init.h>   // ensure that Stanford C++ lib is initialized
 
 #endif // _server_h

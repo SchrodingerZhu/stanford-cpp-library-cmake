@@ -4,6 +4,12 @@
  * This file exports the <code>HashMap</code> class, which stores
  * a set of <i>key</i>-<i>value</i> pairs.
  * 
+ * @version 2018/03/10
+ * - added methods front, back
+ * @version 2017/11/30
+ * - bug fix for iterator version checking support
+ * @version 2017/11/14
+ * - added iterator version checking support
  * @version 2016/10/14
  * - modified floating-point equality tests to use floatingPointEqual function
  * @version 2016/09/24
@@ -31,18 +37,29 @@
  * - added comparison operators ==, !=
  */
 
+#include <private/init.h>   // ensure that Stanford C++ lib is initialized
+
+#ifndef INTERNAL_INCLUDE
+#include <private/initstudent.h>   // insert necessary included code by student
+#endif // INTERNAL_INCLUDE
+
 #ifndef _hashmap_h
 #define _hashmap_h
 
 #include <cstdlib>
 #include <initializer_list>
-#include <map>
 #include <string>
 #include <utility>
-#include<collections/collections.h>
-#include <system/error.h>
-#include <collections/hashcode.h>
-#include <collections/vector.h>
+
+#define INTERNAL_INCLUDE 1
+#include <collections.h>
+#define INTERNAL_INCLUDE 1
+#include <error.h>
+#define INTERNAL_INCLUDE 1
+#include <hashcode.h>
+#define INTERNAL_INCLUDE 1
+#include <vector.h>
+#undef INTERNAL_INCLUDE
 
 /*
  * Class: HashMap<KeyType,ValueType>
@@ -118,6 +135,20 @@ public:
     HashMap& addAll(std::initializer_list<std::pair<KeyType, ValueType> > list);
 
     /*
+     * Method: back
+     * Usage: KeyType value = map.back();
+     * ----------------------------------
+     * Returns the last key in the map in the order established by the
+     * <code>foreach</code> macro.
+     * Note that since the keys are stored in an unpredictable order,
+     * this is not necessarily equal to the "largest" key value in any particular
+     * sorting order; it is just the key that would happen to be emitted last
+     * from a for-each loop.
+     * If the map is empty, generates an error.
+     */
+    KeyType back() const;
+
+    /*
      * Method: clear
      * Usage: map.clear();
      * -------------------
@@ -142,6 +173,20 @@ public:
      * key/value pairs, and <code>false</code> otherwise.
      */
     bool equals(const HashMap& map2) const;
+
+    /*
+     * Method: front
+     * Usage: KeyType value = map.front();
+     * -----------------------------------
+     * Returns the first key in the map in the order established by the
+     * <code>foreach</code> macro.
+     * Note that since the keys are stored in an unpredictable order,
+     * this is not necessarily equal to the "smallest" key value in any particular
+     * sorting order; it is just the key that would happen to be emitted first
+     * from a for-each loop.
+     * If the map is empty, generates an error.
+     */
+    KeyType front() const;
 
     /*
      * Method: get
@@ -408,6 +453,7 @@ private:
     Vector<Cell*> buckets;
     int nBuckets;
     int numEntries;
+    unsigned int m_version = 0; // structure version for detecting invalid iterators
 
     /* Private methods */
 
@@ -521,6 +567,7 @@ private:
                 numEntries++;
             }
         }
+        m_version++;
     }
 
 public:
@@ -563,18 +610,28 @@ public:
     private:
         const HashMap* mp;           /* Pointer to the map           */
         int bucket;                  /* Index of current bucket      */
+        unsigned int itr_version;    /* Version for checking for modification */
         Cell* cp;                    /* Current cell in bucket chain */
 
     public:
-        iterator() : mp(nullptr), bucket(0), cp(nullptr) {
-            /* Empty */
+        iterator()
+                : mp(nullptr),
+                  bucket(0),
+                  itr_version(0),
+                  cp(nullptr) {
+            // empty
         }
 
-        iterator(const HashMap* mp, bool end) {
-            this->mp = mp;
+        iterator(const HashMap* mp, bool end)
+                : mp(mp),
+                  bucket(0),
+                  itr_version(0),
+                  cp(nullptr) {
+            if (mp) {
+                itr_version = mp->version();
+            }
             if (end) {
                 bucket = mp->nBuckets;
-                cp = nullptr;
             } else {
                 bucket = 0;
                 cp = mp->buckets.get(bucket);
@@ -584,13 +641,16 @@ public:
             }
         }
 
-        iterator(const iterator& it) {
-            mp = it.mp;
-            bucket = it.bucket;
-            cp = it.cp;
+        iterator(const iterator& it)
+                : mp(it.mp),
+                  bucket(it.bucket),
+                  itr_version(it.itr_version),
+                  cp(it.cp) {
+            // empty
         }
 
         iterator& operator ++() {
+            stanfordcpplib::collections::checkVersion(*mp, *this);
             cp = cp->next;
             while (!cp && ++bucket < mp->nBuckets) {
                 cp = mp->buckets.get(bucket);
@@ -599,6 +659,7 @@ public:
         }
 
         iterator operator ++(int) {
+            stanfordcpplib::collections::checkVersion(*mp, *this);
             iterator copy(*this);
             operator++();
             return copy;
@@ -613,11 +674,17 @@ public:
         }
 
         KeyType& operator *() {
+            stanfordcpplib::collections::checkVersion(*mp, *this);
             return cp->key;
         }
 
         KeyType* operator ->() {
+            stanfordcpplib::collections::checkVersion(*mp, *this);
             return &cp->key;
+        }
+
+        unsigned int version() const {
+            return itr_version;
         }
 
         friend class HashMap;
@@ -635,6 +702,14 @@ public:
      */
     iterator end() const {
         return iterator(this, /* end */ true);
+    }
+
+    /*
+     * Returns the internal version of this collection.
+     * This is used to check for invalid iterators and issue error messages.
+     */
+    unsigned int version() const {
+        return m_version;
     }
 };
 
@@ -683,9 +758,34 @@ HashMap<KeyType, ValueType>& HashMap<KeyType, ValueType>::addAll(
 }
 
 template <typename KeyType, typename ValueType>
+KeyType HashMap<KeyType, ValueType>::back() const {
+    if (isEmpty()) {
+        error("HashMap::back: map is empty");
+    }
+
+    // find last non-null bucket
+    Cell* cell = nullptr;
+    for (int i = buckets.size() - 1; i >= 0; i--) {
+        cell = buckets[i];
+        if (cell) {
+            // find last non-null cell within bucket
+            while (cell->next) {
+                cell = cell->next;
+            }
+            return cell->key;
+        }
+    }
+
+    // we should never get here
+    error("HashMap::back: never found a non-empty cell bucket");
+    return cell->key;
+}
+
+template <typename KeyType, typename ValueType>
 void HashMap<KeyType, ValueType>::clear() {
     deleteBuckets(buckets);
     numEntries = 0;
+    m_version++;
 }
 
 template <typename KeyType, typename ValueType>
@@ -696,6 +796,14 @@ bool HashMap<KeyType, ValueType>::containsKey(const KeyType& key) const {
 template <typename KeyType, typename ValueType>
 bool HashMap<KeyType, ValueType>::equals(const HashMap<KeyType, ValueType>& map2) const {
     return stanfordcpplib::collections::equalsMap(*this, map2);
+}
+
+template <typename KeyType, typename ValueType>
+KeyType HashMap<KeyType, ValueType>::front() const {
+    if (isEmpty()) {
+        error("HashMap::front: map is empty");
+    }
+    return *begin();
 }
 
 template <typename KeyType, typename ValueType>
@@ -753,6 +861,7 @@ void HashMap<KeyType, ValueType>::mapAll(FunctorType fn) const {
 template <typename KeyType, typename ValueType>
 void HashMap<KeyType, ValueType>::put(const KeyType& key, const ValueType& value) {
     (*this)[key] = value;
+    m_version++;
 }
 
 template <typename KeyType, typename ValueType>
@@ -785,6 +894,7 @@ void HashMap<KeyType, ValueType>::remove(const KeyType& key) {
         }
         delete cp;
         numEntries--;
+        m_version++;
     }
 }
 
@@ -867,6 +977,7 @@ ValueType& HashMap<KeyType, ValueType>::operator [](const KeyType& key) {
         cp->next = buckets[bucket];
         buckets[bucket] = cp;
         numEntries++;
+        m_version++;
     }
     return cp->value;
 }
@@ -1013,7 +1124,5 @@ const K& randomKey(const HashMap<K, V>& map) {
     static Vector<K> v = map.keys();
     return v[0];
 }
-
-#include <private/init.h>   // ensure that Stanford C++ lib is initialized
 
 #endif // _hashmap_h

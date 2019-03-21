@@ -69,7 +69,7 @@
 #include <ios>
 #include <fstream>
 #include <sstream>
-#include "private/foreachpatch.h"
+#include <private/foreachpatch.h>
 
 /* Redefine the ios constants (one of which is "in") */
 
@@ -220,7 +220,5 @@ T Hook(State& fe, ArrayRange<T>*) {
     for (arg)); _fe.state++ == 1; _fe.state = 0)
 
 #define in = _fe::Hook(_fe, _fe.state != 0 ? nullptr : _fe::Init(_fe,
-
-#include <private/init.h>   // ensure that Stanford C++ lib is initialized
 
 #endif // _foreach_h

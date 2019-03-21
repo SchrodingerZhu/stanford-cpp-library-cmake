@@ -6,10 +6,20 @@
  * These macros should be used to declare all not-inside-function static data
  * used by the library, since a lot of library code runs during the
  * static initialization phase.
+ *
+ * @version 2017/10/05
+ * - added STATIC_VARIABLE_NAMESPACE
  */
 
 #ifndef _static_h
 #define _static_h
+
+// macros for concatenating two macros
+#ifndef CONCAT_IMPL
+#define MACRO_CONCAT(a, ...) PRIMITIVE_CONCAT(a, __VA_ARGS__)
+#define PRIMITIVE_CONCAT(a, ...) a ## __VA_ARGS__
+#define MACRO_IDENT(x) x
+#endif // CONCAT_IMPL
 
 // declare static var/func and assign it the given value
 #define STATIC_VARIABLE_DECLARE(type, name, value) \
@@ -64,5 +74,9 @@
 // look up the value of the given static variable (by calling its static s_ function)
 #define STATIC_VARIABLE(name) \
     (s_##name())
+
+// look up the value of the given static variable in another namespace
+#define STATIC_VARIABLE_NAMESPACE(namespacename, name) \
+    (namespacename::s_##name())
 
 #endif // _static_h

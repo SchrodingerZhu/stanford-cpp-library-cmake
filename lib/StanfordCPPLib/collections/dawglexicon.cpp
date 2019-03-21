@@ -15,6 +15,10 @@
  * The DAWG builder code is quite a bit more intricate, see Julie Zelenski
  * if you need it.
  * 
+ * @version 2018/03/10
+ * - added method front
+ * @version 2017/11/14
+ * - added iterator version checking support
  * @version 2016/08/10
  * - added constructor support for std initializer_list usage, such as {"a", "b", "c"}
  * @version 2016/08/04
@@ -31,7 +35,8 @@
  * - BUGFIX: operator << now shows "" marks around words to match Lexicon
  */
 
-#include "dawglexicon.h"
+#define INTERNAL_INCLUDE 1
+#include <dawglexicon.h>
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
@@ -40,10 +45,15 @@
 #include <sstream>
 #include <stdint.h>
 #include <string>
-#include<collections/collections.h>
-#include <system/error.h>
-#include <collections/hashcode.h>
-#include <util/strlib.h>
+#define INTERNAL_INCLUDE 1
+#include <collections.h>
+#define INTERNAL_INCLUDE 1
+#include <error.h>
+#define INTERNAL_INCLUDE 1
+#include <hashcode.h>
+#define INTERNAL_INCLUDE 1
+#include <strlib.h>
+#undef INTERNAL_INCLUDE
 
 static uint32_t my_ntohl(uint32_t arg);
 
@@ -227,6 +237,14 @@ bool DawgLexicon::equals(const DawgLexicon& lex2) const {
     return stanfordcpplib::collections::equals(*this, lex2);
 }
 
+std::string DawgLexicon::front() const {
+    if (isEmpty()) {
+        error("DawgLexicon::front: lexicon is empty");
+    }
+    auto it = begin();
+    return *it;
+}
+
 void DawgLexicon::insert(const std::string& word) {
     add(word);
 }
@@ -280,14 +298,6 @@ std::string DawgLexicon::toString() const {
     std::ostringstream out;
     out << *this;
     return out.str();
-}
-
-std::set<std::string> DawgLexicon::toStlSet() const {
-    std::set<std::string> result;
-    for (std::string word : *this) {
-        result.insert(word);
-    }
-    return result;
 }
 
 /*
@@ -438,7 +448,8 @@ void DawgLexicon::readBinaryFile(std::istream& input) {
     }
 
 #if defined(BYTE_ORDER) && BYTE_ORDER == LITTLE_ENDIAN
-    uint32_t *cur = (uint32_t *) edges;
+    // uint32_t* cur = (uint32_t*) edges;
+    uint32_t* cur = reinterpret_cast<uint32_t*>(edges);
     for (int i = 0; i < numEdges; i++, cur++) {
         *cur = my_ntohl(*cur);
     }

@@ -1,10 +1,12 @@
 /*
- * File: LinkedHashSet.h
+ * File: linkedhashset.h
  * ---------------------
  * This file exports the <code>LinkedHashSet</code> class, which
  * implements an efficient abstraction for storing sets of values.
  * 
  * @author Marty Stepp
+ * @version 2018/03/10
+ * - added methods front, back
  * @version 2016/09/24
  * - refactored to use collections.h utility functions
  * @version 2016/09/22
@@ -21,15 +23,27 @@
  * @since 2015/10/26
  */
 
+#include <private/init.h>   // ensure that Stanford C++ lib is initialized
+
+#ifndef INTERNAL_INCLUDE
+#include <private/initstudent.h>   // insert necessary included code by student
+#endif // INTERNAL_INCLUDE
+
 #ifndef _linkedhashset_h
 #define _linkedhashset_h
 
 #include <initializer_list>
 #include <iostream>
-#include<collections/collections.h>
-#include <system/error.h>
-#include <collections/hashcode.h>
-#include "linkedhashmap.h"
+
+#define INTERNAL_INCLUDE 1
+#include <collections.h>
+#define INTERNAL_INCLUDE 1
+#include <error.h>
+#define INTERNAL_INCLUDE 1
+#include <hashcode.h>
+#define INTERNAL_INCLUDE 1
+#include <linkedhashmap.h>
+#undef INTERNAL_INCLUDE
 
 /*
  * Class: LinkedHashSet<ValueType>
@@ -89,6 +103,15 @@ public:
     LinkedHashSet<ValueType>& addAll(std::initializer_list<ValueType> list);
 
     /*
+     * Method: back
+     * Usage: ValueType value = set.back();
+     * ------------------------------------
+     * Returns the last value in the set in the order established by the
+     * <code>foreach</code> macro.  If the set is empty, generates an error.
+     */
+    ValueType back() const;
+
+    /*
      * Method: clear
      * Usage: set.clear();
      * -------------------
@@ -135,6 +158,16 @@ public:
      * generates an error.
      */
     ValueType first() const;
+
+    /*
+     * Method: front
+     * Usage: ValueType value = set.front();
+     * -------------------------------------
+     * Returns the first value in the set in the order established by the
+     * <code>foreach</code> macro.  If the set is empty, generates an error.
+     * Equivalent to first.
+     */
+    ValueType front() const;
 
     /*
      * Method: insert
@@ -503,6 +536,14 @@ LinkedHashSet<ValueType>& LinkedHashSet<ValueType>::addAll(std::initializer_list
 }
 
 template <typename ValueType>
+ValueType LinkedHashSet<ValueType>::back() const {
+    if (isEmpty()) {
+        error("LinkedHashSet::back: set is empty");
+    }
+    return map.back();
+}
+
+template <typename ValueType>
 void LinkedHashSet<ValueType>::clear() {
     map.clear();
 }
@@ -552,6 +593,14 @@ ValueType LinkedHashSet<ValueType>::first() const {
         error("LinkedHashSet::first: set is empty");
     }
     return *begin();
+}
+
+template <typename ValueType>
+ValueType LinkedHashSet<ValueType>::front() const {
+    if (isEmpty()) {
+        error("LinkedHashSet::front: set is empty");
+    }
+    return map.front();
 }
 
 template <typename ValueType>
@@ -860,7 +909,5 @@ template <typename T>
 const T& randomElement(const LinkedHashSet<T>& set) {
     return stanfordcpplib::collections::randomElement(set);
 }
-
-#include <private/init.h>   // ensure that Stanford C++ lib is initialized
 
 #endif // _linkedhashset_h

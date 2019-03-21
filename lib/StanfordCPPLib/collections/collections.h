@@ -8,6 +8,10 @@
  * Used to implement comparison operators like < and >= on collections.
  *
  * @author Marty Stepp
+ * @version 2017/12/12
+ * - added equalsDouble for collections of double values (can't compare with ==)
+ * @version 2017/10/18
+ * - fix compiler warnings
  * @version 2017/09/29
  * - added compareTo1-5
  * @version 2016/12/09
@@ -20,22 +24,115 @@
  * @since 2014/10/10
  */
 
+#include <private/init.h>   // ensure that Stanford C++ lib is initialized
+
+#ifndef INTERNAL_INCLUDE
+#include <private/initstudent.h>   // insert necessary included code by student
+#endif // INTERNAL_INCLUDE
+
 #ifndef _collections_h
 #define _collections_h
 
 #include <iostream>
-#include <system/error.h>
-#include <collections/hashcode.h>
-#include <random>
-#include <util/strlib.h>
+#include <sstream>
 
+#define INTERNAL_INCLUDE 1
+#include <error.h>
+#define INTERNAL_INCLUDE 1
+#include <gmath.h>
+#define INTERNAL_INCLUDE 1
+#include <hashcode.h>
+#define INTERNAL_INCLUDE 1
+#include <random.h>
+#undef INTERNAL_INCLUDE
+
+// begin global namespace string read/writing functions from strlib.h
+
+/**
+ * Reads the next string from infile into the reference parameter str.
+ * If the first character (other than whitespace) is either a single
+ * or a double quote, this function reads characters up to the
+ * matching quote, processing standard escape sequences as it goes.
+ * If not, readString reads characters up to any of the characters
+ * in the string STRING_DELIMITERS in the implementation file.
+ *
+ * @private
+ */
+bool readQuotedString(std::istream& is, std::string& str, bool throwOnError = true);
+
+/**
+ * Writes the string str to outfile surrounded by double quotes, converting
+ * special characters to escape sequences, as necessary.  If the optional
+ * parameter forceQuotes is explicitly set to false, quotes are included
+ * in the output only if necessary.
+ *
+ * @private
+ */
+std::ostream& writeQuotedString(std::ostream& os, const std::string& str,
+                                bool forceQuotes = true);
+
+/**
+ * Checks whether the string needs quoting in order to be read correctly.
+ * @private
+ */
+bool stringNeedsQuoting(const std::string& str);
+
+/**
+ * Writes a generic value to the output stream.  If that value is a string,
+ * this function uses writeQuotedString to write the value.
+ * @private
+ */
+template <typename ValueType>
+std::ostream& writeGenericValue(std::ostream& os, const ValueType& value, bool) {
+    os << std::boolalpha << value;
+    return os;
+}
+
+template <>
+inline std::ostream& writeGenericValue(std::ostream& os, const std::string& value,
+                              bool forceQuotes) {
+    return writeQuotedString(os, value, forceQuotes);
+}
+
+template <typename ValueType>
+inline std::string genericValueToString(const ValueType& value,
+                                        bool forceQuotes = false) {
+    std::ostringstream os;
+    writeGenericValue(os, value, forceQuotes);
+    return os.str();
+}
+
+template <>
+inline std::string genericValueToString(const std::string& value,
+                                        bool forceQuotes) {
+    std::ostringstream os;
+    writeQuotedString(os, value, forceQuotes);
+    return os.str();
+}
+
+/**
+ * Reads a generic value from the input stream.  If that value is a string,
+ * this function uses readQuotedString to read the value.
+ * @private
+ */
+template <typename ValueType>
+bool readGenericValue(std::istream& is, ValueType& value) {
+    return (bool) (is >> value);
+}
+
+template <>
+inline bool readGenericValue(std::istream& is, std::string& value) {
+    return readQuotedString(is, value, /* throwOnError */ false);
+}
+
+// end of global namespace string read/writing functions from strlib.h
 namespace stanfordcpplib {
 namespace collections {
 
+#ifdef SPL_THROW_ON_INVALID_ITERATOR
 template <typename CollectionType, typename IteratorType>
 void checkVersion(const CollectionType& coll, const IteratorType& itr,
                   const std::string& memberName = "") {
-#ifdef SPL_THROW_ON_INVALID_ITERATOR
     unsigned int collVersion = coll.version();
     unsigned int itrVersion = itr.version();
     if (itrVersion != collVersion) {
@@ -47,8 +144,14 @@ void checkVersion(const CollectionType& coll, const IteratorType& itr,
         msg += "Do not modify a collection during a for-each loop or iterator traversal.";
         error(msg);
     }
-#endif
 }
+#else // SPL_THROW_ON_INVALID_ITERATOR
+template <typename CollectionType, typename IteratorType>
+void checkVersion(const CollectionType&, const IteratorType&,
+                  const std::string& = "") {
+    // empty
+}
+#endif
 
 /*
  * Performs a comparison for ordering between the given two collections
@@ -294,6 +397,36 @@ bool equals(const CollectionType& coll1, const CollectionType& coll2) {
     auto end2 = coll1.end();
     while (itr1 != end1 && itr2 != end2) {
         if (!(*itr1 == *itr2)) {
+            return false;
+        }
+        ++itr1;
+        ++itr2;
+    }
+    return true;
+}
+
+/*
+ * Returns true if the two collections contain the same elements in the same order.
+ * The element type must be double, float, or any floating-point type.
+ */
+template <typename CollectionType>
+bool equalsDouble(const CollectionType& coll1, const CollectionType& coll2) {
+    // optimization: if literally same collection, stop
+    if (&coll1 == &coll2) {
+        return true;
+    }
+    // optimization: if not same size, don't bother comparing pairwise
+    if (coll1.size() != coll2.size()) {
+        return false;
+    }
+
+    // check each pair of elements for equality
+    auto itr1 = coll1.begin();
+    auto end1 = coll1.end();
+    auto itr2 = coll2.begin();
+    auto end2 = coll1.end();
+    while (itr1 != end1 && itr2 != end2) {
+        if (!floatingPointEqual(*itr1, *itr2)) {
             return false;
         }
         ++itr1;
@@ -616,6 +749,5 @@ std::ostream& writeMap(std::ostream& out, const MapType& map) {
 
 } // namespace collections
 } // namespace stanfordcpplib
- #include <private/init.h>   // ensure that Stanford C++ lib is initialized
 
-#endif
+#endif // _collections_h

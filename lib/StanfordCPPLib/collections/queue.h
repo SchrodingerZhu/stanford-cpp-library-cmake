@@ -5,6 +5,10 @@
  * in which values are ordinarily processed in a first-in/first-out
  * (FIFO) order.
  * 
+ * @version 2018/01/23
+ * - fixed bad reference bug on queue.enqueue(queue.peek())
+ * @version 2017/11/14
+ * - added iterator version checking support
  * @version 2016/09/24
  * - refactored to use collections.h utility functions
  * - added iterators begin(), end()
@@ -27,17 +31,28 @@
  * - removed usage of __foreach macro
  */
 
+#include <private/init.h>   // ensure that Stanford C++ lib is initialized
+
+#ifndef INTERNAL_INCLUDE
+#include <private/initstudent.h>   // insert necessary included code by student
+#endif // INTERNAL_INCLUDE
+
 #ifndef _queue_h
 #define _queue_h
 
 #include <deque>
 #include <initializer_list>
 #include <iterator>
-#include <queue>
-#include<collections/collections.h>
-#include <system/error.h>
-#include <collections/hashcode.h>
-#include <collections/vector.h>
+
+#define INTERNAL_INCLUDE 1
+#include <collections.h>
+#define INTERNAL_INCLUDE 1
+#include <error.h>
+#define INTERNAL_INCLUDE 1
+#include <hashcode.h>
+#define INTERNAL_INCLUDE 1
+#include <vector.h>
+#undef INTERNAL_INCLUDE
 
 /*
  * Class: Queue<ValueType>
@@ -168,16 +183,6 @@ public:
      * Returns the number of values in the queue.
      */
     int size() const;
-    
-    /*
-     * Returns an STL deque object with the same elements as this Queue.
-     */
-    std::queue<ValueType> toStlDeque() const;
-    
-    /*
-     * Returns an STL queue object with the same elements as this Queue.
-     */
-    std::queue<ValueType> toStlQueue() const;
 
     /*
      * Method: toString
@@ -258,22 +263,27 @@ private:
      */
     class iterator : public std::iterator<std::input_iterator_tag, ValueType> {
     public:
-        iterator(const Queue* gp, int index) {
-            this->gp = gp;
-            this->index = index;
+        iterator(const Queue* gp, int index)
+                : gp(gp),
+                  index(index) {
+            itr_version = gp->version();
         }
 
-        iterator(const iterator& it) {
-            this->gp = it.gp;
-            this->index = it.index;
+        iterator(const iterator& it)
+                : gp(it.gp),
+                  index(it.index),
+                  itr_version(it.itr_version) {
+            // empty
         }
 
         iterator& operator ++() {
+            stanfordcpplib::collections::checkVersion(*gp, *this);
             index = (index + 1) % gp->capacity;
             return *this;
         }
 
         iterator operator ++(int) {
+            stanfordcpplib::collections::checkVersion(*gp, *this);
             iterator copy(*this);
             operator++();
             return copy;
@@ -288,16 +298,23 @@ private:
         }
 
         const ValueType& operator *() {
+            stanfordcpplib::collections::checkVersion(*gp, *this);
             return gp->ringBuffer[index];
         }
 
         ValueType* operator ->() {
+            stanfordcpplib::collections::checkVersion(*gp, *this);
             return &gp->ringBuffer[index];
+        }
+
+        unsigned int version() const {
+            return itr_version;
         }
 
     private:
         const Queue* gp;
         int index;
+        unsigned int itr_version;
     };
 
 public:
@@ -308,6 +325,12 @@ public:
     iterator end() const {
         return iterator(this, /* index */ tail);
     }
+
+    /*
+     * Returns the internal version of this collection.
+     * This is used to check for invalid iterators and issue error messages.
+     */
+    unsigned int version() const;
 };
 
 /*
@@ -401,11 +424,20 @@ ValueType Queue<ValueType>::dequeue() {
 template <typename ValueType>
 void Queue<ValueType>::enqueue(const ValueType& value) {
     if (count >= capacity - 1) {
+        // Buffer almost full; need to resize buffer to a larger capacity.
+        // BUGFIX: when calling queue.enqueue(queue.peek()), the resize here
+        // was causing the reference to become invalid.
+        // In this case we need to make a copy of the value so that we don't
+        // lose its value on resize.
+        const ValueType valueCopy = value;
         expandRingBufferCapacity();
+        enqueue(valueCopy);
+    } else {
+        // standard add to end of ring buffer
+        ringBuffer[tail] = value;
+        tail = (tail + 1) % capacity;
+        count++;
     }
-    ringBuffer[tail] = value;
-    tail = (tail + 1) % capacity;
-    count++;
 }
 
 template <typename ValueType>
@@ -450,28 +482,15 @@ int Queue<ValueType>::size() const {
 }
 
 template <typename ValueType>
-std::queue<ValueType> Queue<ValueType>::toStlDeque() const {
-    std::deque<ValueType> result;
-    for (int i = 0; i < count; i++) {
-        result.push_back(ringBuffer[(head + i) % capacity]);
-    }
-    return result;
-}
-
-template <typename ValueType>
-std::queue<ValueType> Queue<ValueType>::toStlQueue() const {
-    std::queue<ValueType> result;
-    for (int i = 0; i < count; i++) {
-        result.push(ringBuffer[(head + i) % capacity]);
-    }
-    return result;
-}
-
-template <typename ValueType>
 std::string Queue<ValueType>::toString() const {
     std::ostringstream os;
     os << *this;
     return os.str();
+}
+
+template <typename ValueType>
+unsigned int Queue<ValueType>::version() const {
+    return ringBuffer.version();
 }
 
 /*
@@ -580,7 +599,5 @@ int hashCode(const Queue<T>& q) {
     }
     return int(code & hashMask());
 }
-
-#include <private/init.h>   // ensure that Stanford C++ lib is initialized
 
 #endif // _queue_h

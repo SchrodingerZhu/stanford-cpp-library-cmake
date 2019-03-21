@@ -9,6 +9,8 @@
  * cost due to needing to store an extra copy of the keys.
  * 
  * @author Marty Stepp
+ * @version 2018/03/10
+ * - added methods front, back
  * @version 2016/09/24
  * - refactored to use collections.h utility functions
  * @version 2016/09/22
@@ -26,17 +28,30 @@
  * @since 2015/10/26
  */
 
+#include <private/init.h>   // ensure that Stanford C++ lib is initialized
+
+#ifndef INTERNAL_INCLUDE
+#include <private/initstudent.h>   // insert necessary included code by student
+#endif // INTERNAL_INCLUDE
+
 #ifndef _linkedhashmap_h
 #define _linkedhashmap_h
 
 #include <initializer_list>
 #include <iterator>
 #include <string>
-#include<collections/collections.h>
-#include <system/error.h>
-#include <collections/hashcode.h>
-#include <collections/hashmap.h>
-#include <collections/vector.h>
+
+#define INTERNAL_INCLUDE 1
+#include <collections.h>
+#define INTERNAL_INCLUDE 1
+#include <error.h>
+#define INTERNAL_INCLUDE 1
+#include <hashcode.h>
+#define INTERNAL_INCLUDE 1
+#include <hashmap.h>
+#define INTERNAL_INCLUDE 1
+#include <vector.h>
+#undef INTERNAL_INCLUDE
 
 /*
  * Class: LinkedHashMap<KeyType,ValueType>
@@ -106,6 +121,15 @@ public:
     LinkedHashMap& addAll(std::initializer_list<std::pair<KeyType, ValueType> > list);
 
     /*
+     * Method: back
+     * Usage: KeyType value = map.back();
+     * ------------------------------------
+     * Returns the last key in the map in the order established by the
+     * <code>foreach</code> macro.  If the map is empty, generates an error.
+     */
+    KeyType back() const;
+
+    /*
      * Method: clear
      * Usage: map.clear();
      * -------------------
@@ -130,6 +154,15 @@ public:
      * key/value pairs, and <code>false</code> otherwise.
      */
     bool equals(const LinkedHashMap& map2) const;
+
+    /*
+     * Method: front
+     * Usage: KeyType value = map.front();
+     * -------------------------------------
+     * Returns the first key in the map in the order established by the
+     * <code>foreach</code> macro.  If the map is empty, generates an error.
+     */
+    KeyType front() const;
 
     /*
      * Method: get
@@ -468,6 +501,14 @@ LinkedHashMap<KeyType, ValueType>& LinkedHashMap<KeyType, ValueType>::addAll(
 }
 
 template <typename KeyType, typename ValueType>
+KeyType LinkedHashMap<KeyType, ValueType>::back() const {
+    if (isEmpty()) {
+        error("LinkedHashMap::back: map is empty");
+    }
+    return keyVector.back();
+}
+
+template <typename KeyType, typename ValueType>
 void LinkedHashMap<KeyType, ValueType>::clear() {
     innerMap.clear();
     keyVector.clear();
@@ -481,6 +522,14 @@ bool LinkedHashMap<KeyType, ValueType>::containsKey(const KeyType& key) const {
 template <typename KeyType, typename ValueType>
 bool LinkedHashMap<KeyType, ValueType>::equals(const LinkedHashMap<KeyType, ValueType>& map2) const {
     return stanfordcpplib::collections::equalsMap(*this, map2);
+}
+
+template <typename KeyType, typename ValueType>
+KeyType LinkedHashMap<KeyType, ValueType>::front() const {
+    if (isEmpty()) {
+        error("LinkedHashMap::front: map is empty");
+    }
+    return keyVector.front();
 }
 
 template <typename KeyType, typename ValueType>
@@ -791,7 +840,5 @@ const K& randomKey(const LinkedHashMap<K, V>& map) {
     static Vector<K> v = map.keys();
     return v[0];
 }
-
-#include <private/init.h>   // ensure that Stanford C++ lib is initialized
 
 #endif // _linkedhashmap_h

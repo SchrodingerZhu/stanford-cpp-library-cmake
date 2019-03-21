@@ -5,6 +5,12 @@
  * implementation of a doubly-linked list of objects and provides a
  * public interface similar to that of the <code>Vector</code> class.
  *
+ * @version 2018/01/07
+ * - added removeFront, removeBack
+ * @version 2017/11/15
+ * - added contains, indexOf, lastIndexOf, removeValue, reverse, shuffle, sort
+ * @version 2017/11/14
+ * - added iterator version checking support
  * @version 2016/09/24
  * - refactored to use collections.h utility functions
  * @version 2016/08/10
@@ -28,21 +34,36 @@
  * @since 2014/07/10
  */
 
+#include <private/init.h>   // ensure that Stanford C++ lib is initialized
+
+#ifndef INTERNAL_INCLUDE
+#include <private/initstudent.h>   // insert necessary included code by student
+#endif // INTERNAL_INCLUDE
+
 #ifndef _linkedlist_h
 #define _linkedlist_h
 
+#include <algorithm>
 #include <initializer_list>
 #include <iostream>
 #include <iterator>
+#include <list>
 #include <sstream>
 #include <string>
-#include <list>
-#include <vector>
-#include<collections/collections.h>
-#include <system/error.h>
-#include <collections/hashcode.h>
-#include <util/random.h>
-#include <util/strlib.h>
+
+#define INTERNAL_INCLUDE 1
+#include <collections.h>
+#define INTERNAL_INCLUDE 1
+#include <error.h>
+#define INTERNAL_INCLUDE 1
+#include <hashcode.h>
+#define INTERNAL_INCLUDE 1
+#include <random.h>
+#define INTERNAL_INCLUDE 1
+#include <strlib.h>
+#define INTERNAL_INCLUDE 1
+#include <vector.h>
+#undef INTERNAL_INCLUDE
 
 /*
  * Class: LinkedList<ValueType>
@@ -104,7 +125,7 @@ public:
      * Method: back
      * Usage: ValueType val = list.back();
      * -----------------------------------
-     * Returns the element at the back of this LinkedList.
+     * Returns the element at the back (index size-1) of this LinkedList.
      * This method signals an error if the list is empty.
      */
     ValueType& back();
@@ -119,6 +140,15 @@ public:
     void clear();
     
     /*
+     * Method: contains
+     * Usage: if (list.contains(value)) ...
+     * ------------------------------------
+     * Returns true if the list contains the given value.
+     * The ValueType must have an == operator to use this method.
+     */
+    bool contains(const ValueType& value) const;
+
+    /*
      * Method: equals
      * Usage: if (list.equals(l2)) ...
      * -------------------------------
@@ -131,8 +161,8 @@ public:
     /*
      * Method: front
      * Usage: ValueType val = list.front();
-     * ---------------------------------------
-     * Returns the element at the front of this LinkedList.
+     * ------------------------------------
+     * Returns the element at the front (index 0) of this LinkedList.
      * This method signals an error if the list is empty.
      */
     ValueType& front();
@@ -150,7 +180,17 @@ public:
      * the given index.
      */
     const ValueType& get(int index) const;
-    
+
+    /*
+     * Method: indexOf
+     * Usage: int index = list.indexOf(value);
+     * ---------------------------------------
+     * Returns the index of the first occurrence of the given value.
+     * If the value is not found in the vector, returns -1.
+     * The ValueType must have an == operator to use this method.
+     */
+    int indexOf(const ValueType& value) const;
+
     /*
      * Method: insert
      * Usage: list.insert(0, value);
@@ -168,7 +208,17 @@ public:
      * Returns <code>true</code> if this LinkedList contains no elements.
      */
     bool isEmpty() const;
-    
+
+    /*
+     * Method: lastIndexOf
+     * Usage: int index = list.lastIndexOf(value);
+     * -------------------------------------------
+     * Returns the index of the last occurrence of the given value.
+     * If the value is not found in the vector, returns -1.
+     * The ValueType must have an == operator to use this method.
+     */
+    int lastIndexOf(const ValueType& value) const;
+
     /*
      * Method: mapAll
      * Usage: list.mapAll(fn);
@@ -183,6 +233,15 @@ public:
     void mapAll(FunctorType fn) const;
     
     /*
+     * Method: pop_back
+     * Usage: ValueType back = list.pop_back();
+     * ------------------------------------------
+     * Removes and returns the last value of this LinkedList.
+     * Throws an error if the list is empty.
+     */
+    ValueType pop_back();
+
+    /*
      * Method: pop_front
      * Usage: ValueType front = list.pop_front();
      * ------------------------------------------
@@ -192,14 +251,14 @@ public:
     ValueType pop_front();
     
     /*
-     * Method: pop_back
-     * Usage: ValueType back = list.pop_back();
-     * ------------------------------------------
-     * Removes and returns the last value of this LinkedList.
-     * Throws an error if the list is empty.
+     * Method: push_back
+     * Usage: list.push_back(value);
+     * -----------------------------
+     * Adds a new value to the end of this LinkedList.
+     * Same behavior as the <code>add</code> method.
      */
-    ValueType pop_back();
-    
+    void push_back(const ValueType& value);
+
     /*
      * Method: push_front
      * Usage: list.push_front(value);
@@ -209,15 +268,6 @@ public:
     void push_front(const ValueType& value);
     
     /*
-     * Method: push_back
-     * Usage: list.push_back(value);
-     * -----------------------------
-     * Adds a new value to the end of this LinkedList.
-     * Same behavior as the <code>add</code> method.
-     */
-    void push_back(const ValueType& value);
-    
-    /*
      * Method: remove
      * Usage: list.remove(index);
      * -------------------------
@@ -225,6 +275,44 @@ public:
      * This method signals an error if the index is outside the list range.
      */
     void remove(int index);
+
+    /*
+     * Method: removeFirst
+     * Usage: ValueType val = list.removeFirst();
+     * ------------------------------------------
+     * Removes and returns the element at index 0 in this list.
+     * This method signals an error if list is empty.
+     */
+    ValueType removeFront();
+
+    /*
+     * Method: removeLast
+     * Usage: ValueType val = list.removeLast();
+     * -----------------------------------------
+     * Removes and returns the element at index (size - 1) in this list.
+     * This method signals an error if list is empty.
+     */
+    ValueType removeBack();
+
+    /*
+     * Method: removeValue
+     * Usage: list.removeValue(value);
+     * -------------------------------
+     * Removes the first occurrence of the element value from this list.
+     * All subsequent elements are shifted one position to the left.
+     * If the vector does not contain the given value, has no effect.
+     * The ValueType must have an == operator to use this method.
+     */
+    void removeValue(const ValueType& value);
+
+    /*
+     * Method: reverse
+     * Usage: list.reverse();
+     * ----------------------
+     * Reverses the order of the elements in this list.
+     * For example, if the list stores {1, 3, 4, 9}, changes it to store {9, 4, 3, 1}.
+     */
+    void reverse();
 
     /*
      * Method: set
@@ -241,13 +329,31 @@ public:
     void set(int index, const ValueType& value);
 
     /*
+     * Method: shuffle
+     * Usage: list.shuffle();
+     * ----------------------
+     * Rearranges the order of the elements in this list into a random order.
+     */
+    void shuffle();
+
+    /*
      * Method: size
      * Usage: int nElems = list.size();
      * --------------------------------
      * Returns the number of elements in this LinkedList.
      */
     int size() const;
-    
+
+    /*
+     * Method: sort
+     * Usage: list.sort();
+     * -------------------
+     * Rearranges the order of the elements in this list into sorted order.
+     * For example, if the list stores {9, 1, 4, 3}, changes it to store {1, 3, 4, 9}.
+     * The ValueType must have an operator < to call this method.
+     */
+    void sort();
+
     /*
      * Method: subList
      * Usage: LinkedList<ValueType> sub = list.subList(start, length);
@@ -259,11 +365,6 @@ public:
      */
     LinkedList<ValueType> subList(int start, int length) const;
     
-    /*
-     * Returns an STL list object with the same elements as this LinkedList.
-     */
-    std::list<ValueType> toStlList() const;
-
     /*
      * Method: toString
      * Usage: string str = list.toString();
@@ -371,6 +472,7 @@ private:
 
     /* Instance variables */
     std::list<ValueType> m_elements;   // STL linked list as backing storage
+    unsigned int m_version = 0;   // structure version for detecting invalid iterators
 
     /* Private methods */
 
@@ -421,49 +523,116 @@ public:
      * iterators so that they work symmetrically with respect to the
      * corresponding STL classes.
      */
-    class iterator : public std::list<ValueType>::iterator {
+    class linkedlist_iterator : public std::list<ValueType>::iterator {
     public:
-        iterator() : std::list<ValueType>::iterator() {}
-        iterator(const iterator& it) : std::list<ValueType>::iterator(it) {}
-        iterator(const typename std::list<ValueType>::iterator& it) : std::list<ValueType>::iterator(it) {}
+        linkedlist_iterator()
+                : std::list<ValueType>::iterator(),
+                  llp(nullptr),
+                  itr_version(0) {
+            // empty
+        }
+
+        linkedlist_iterator(const linkedlist_iterator& it)
+                : std::list<ValueType>::iterator(it),
+                  llp(it.llp),
+                  itr_version(it.itr_version) {
+            // empty
+        }
+
+        linkedlist_iterator(LinkedList* llp, const typename std::list<ValueType>::iterator& it)
+                : std::list<ValueType>::iterator(it),
+                  llp(llp),
+                  itr_version(llp->version()) {
+            // empty
+        }
+
+        ValueType& operator *() {
+            if (llp) {
+                stanfordcpplib::collections::checkVersion(*llp, *this);
+            }
+            return std::list<ValueType>::iterator::operator *();   // call super
+        }
+
+        ValueType* operator ->() {
+            if (llp) {
+                stanfordcpplib::collections::checkVersion(*llp, *this);
+            }
+            return std::list<ValueType>::iterator::operator ->();   // call super
+        }
+
+        unsigned int version() const {
+            return itr_version;
+        }
+
+    private:
+        LinkedList* llp;
+        unsigned int itr_version;
     };
-    class const_iterator : public std::list<ValueType>::const_iterator {
+
+    class const_linkedlist_iterator : public std::list<ValueType>::const_iterator {
     public:
-        const_iterator() : std::list<ValueType>::const_iterator() {}
-        const_iterator(const const_iterator& it) : std::list<ValueType>::const_iterator(it) {}
-        const_iterator(const typename std::list<ValueType>::const_iterator& it) : std::list<ValueType>::const_iterator(it) {}
+        const_linkedlist_iterator()
+                : std::list<ValueType>::const_iterator(),
+                  llp(nullptr),
+                  itr_version(0) {
+            // empty
+        }
+
+        const_linkedlist_iterator(const const_linkedlist_iterator& it)
+                : std::list<ValueType>::const_iterator(it),
+                  llp(it.llp),
+                  itr_version(it.itr_version) {
+            // empty
+        }
+
+        const_linkedlist_iterator(const LinkedList* llp, const typename std::list<ValueType>::const_iterator& it)
+                : std::list<ValueType>::const_iterator(it),
+                  llp(llp),
+                  itr_version(llp->version()) {
+            // empty
+        }
+
+    private:
+        const LinkedList* llp;
+        unsigned int itr_version;
     };
 
     /*
      * Returns an iterator positioned at the first element of the list.
      */
-    iterator begin() {
-        return iterator(m_elements.begin());
+    linkedlist_iterator begin() {
+        return linkedlist_iterator(this, m_elements.begin());
     }
 
     /*
      * Returns an iterator positioned at the first element of the list.
      */
-    const_iterator begin() const {
+    const_linkedlist_iterator begin() const {
         auto itr = m_elements.begin();
-        return const_iterator(itr);
+        return const_linkedlist_iterator(this, itr);
     }
     
     /*
      * Returns an iterator positioned at the last element of the list.
      */
-    iterator end() {
+    linkedlist_iterator end() {
         auto itr = m_elements.end();
-        return iterator(itr);
+        return linkedlist_iterator(this, itr);
     }
     
     /*
      * Returns an iterator positioned at the last element of the list.
      */
-    const_iterator end() const {
+    const_linkedlist_iterator end() const {
         auto itr = m_elements.end();
-        return const_iterator(itr);
+        return const_linkedlist_iterator(this, itr);
     }
+
+    /*
+     * Returns the internal version of this collection.
+     * This is used to check for invalid iterators and issue error messages.
+     */
+    unsigned int version() const;
 };
 
 /* Implementation section */
@@ -481,8 +650,9 @@ LinkedList<ValueType>::LinkedList() {
 }
 
 template <typename ValueType>
-LinkedList<ValueType>::LinkedList(const std::list<ValueType>& v) {
-    m_elements = v;
+LinkedList<ValueType>::LinkedList(const std::list<ValueType>& v)
+        : m_elements(v) {
+    // empty
 }
 
 template <typename ValueType>
@@ -498,6 +668,7 @@ LinkedList<ValueType>::~LinkedList() {
 template <typename ValueType>
 void LinkedList<ValueType>::add(ValueType value) {
     m_elements.push_back(value);
+    m_version++;
 }
 
 template <typename ValueType>
@@ -506,6 +677,7 @@ LinkedList<ValueType>::addAll(const LinkedList<ValueType>& list) {
     for (const ValueType& value : list) {
         add(value);
     }
+    m_version++;
 }
 
 template <typename ValueType>
@@ -513,6 +685,7 @@ LinkedList<ValueType>& LinkedList<ValueType>::addAll(std::initializer_list<Value
     for (const ValueType& value : list) {
         add(value);
     }
+    m_version++;
     return *this;
 }
 
@@ -535,6 +708,12 @@ const ValueType& LinkedList<ValueType>::back() const {
 template <typename ValueType>
 void LinkedList<ValueType>::clear() {
     m_elements.clear();
+    m_version++;
+}
+
+template <typename ValueType>
+bool LinkedList<ValueType>::contains(const ValueType& value) const {
+    return indexOf(value) >= 0;
 }
 
 template <typename ValueType>
@@ -569,16 +748,46 @@ const ValueType & LinkedList<ValueType>::get(int index) const {
 }
 
 template <typename ValueType>
+int LinkedList<ValueType>::indexOf(const ValueType& value) const {
+    // loop using iterator to avoid O(N^2) runtime
+    int i = 0;
+    for (const ValueType& element : *this) {
+        if (element == value) {
+            return i;
+        }
+        i++;
+    }
+    return -1;
+}
+
+template <typename ValueType>
 void LinkedList<ValueType>::insert(int index, ValueType value) {
     checkIndex(index, 0, size(), "insert");
     auto itr = m_elements.begin();
     std::advance(itr, index);
     m_elements.insert(itr, value);
+    m_version++;
 }
 
 template <typename ValueType>
 bool LinkedList<ValueType>::isEmpty() const {
     return m_elements.empty();
+}
+
+template <typename ValueType>
+int LinkedList<ValueType>::lastIndexOf(const ValueType& value) const {
+    // loop using iterator to avoid O(N^2) runtime
+    int i = size();
+    auto begin = this->begin();
+    auto itr = this->end();
+    while (itr != begin) {
+        itr--;
+        i--;
+        if (*itr == value) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 /*
@@ -616,6 +825,7 @@ ValueType LinkedList<ValueType>::pop_back() {
     }
     ValueType back = m_elements.back();
     m_elements.pop_back();
+    m_version++;
     return back;
 }
 
@@ -626,17 +836,20 @@ ValueType LinkedList<ValueType>::pop_front() {
     }
     ValueType front = m_elements.front();
     m_elements.pop_front();
+    m_version++;
     return front;
 }
 
 template <typename ValueType>
 void LinkedList<ValueType>::push_back(const ValueType& value) {
     m_elements.push_back(value);
+    m_version++;
 }
 
 template <typename ValueType>
 void LinkedList<ValueType>::push_front(const ValueType& value) {
     m_elements.push_front(value);
+    m_version++;
 }
 
 template <typename ValueType>
@@ -645,17 +858,88 @@ void LinkedList<ValueType>::remove(int index) {
     auto itr = m_elements.begin();
     advance(itr, index);
     m_elements.erase(itr);
+    m_version++;
+}
+
+template <typename ValueType>
+ValueType LinkedList<ValueType>::removeBack() {
+    return pop_back();
+}
+
+template <typename ValueType>
+ValueType LinkedList<ValueType>::removeFront() {
+    return pop_front();
+}
+
+template <typename ValueType>
+void LinkedList<ValueType>::removeValue(const ValueType& value) {
+    // loop using iterator to avoid O(N^2) runtime
+    auto itr = this->begin();
+    auto end = this->end();
+    while (itr != end) {
+        if (*itr == value) {
+            m_elements.erase(itr);
+            break;
+        }
+        itr++;
+    }
+    m_version++;
+}
+
+template <typename ValueType>
+void LinkedList<ValueType>::reverse() {
+    m_elements.reverse();
+    m_version++;
 }
 
 template <typename ValueType>
 void LinkedList<ValueType>::set(int index, const ValueType & value) {
     checkIndex(index, 0, size()-1, "set");
     m_elements[index] = value;
+    m_version++;
+}
+
+template <typename ValueType>
+void LinkedList<ValueType>::shuffle() {
+    // actually shuffle a vector to avoid O(N^2) runtime
+    // at the cost of O(N) extra memory usage
+    Vector<ValueType> vec;
+    for (ValueType element : *this) {
+        vec.add(element);
+    }
+    for (int i = 0, length = vec.size(); i < length; i++) {
+        int j = randomInteger(i, length - 1);
+        if (i != j) {
+            std::swap(vec[i], vec[j]);
+        }
+    }
+
+    clear();
+    for (const ValueType& element : vec) {
+        add(element);
+    }
 }
 
 template <typename ValueType>
 int LinkedList<ValueType>::size() const {
     return m_elements.size();
+}
+
+
+template <typename ValueType>
+void LinkedList<ValueType>::sort() {
+    // actually sort a vector to avoid O(N^2) runtime
+    // at the cost of O(N) extra memory usage
+    Vector<ValueType> vec;
+    for (ValueType element : *this) {
+        vec.add(element);
+    }
+    std::sort(vec.begin(), vec.end());
+
+    clear();
+    for (const ValueType& element : vec) {
+        add(element);
+    }
 }
 
 template <typename ValueType>
@@ -678,15 +962,15 @@ LinkedList<ValueType> LinkedList<ValueType>::subList(int start, int length) cons
 }
 
 template <typename ValueType>
-std::list<ValueType> LinkedList<ValueType>::toStlList() const {
-    return m_elements;
-}
-
-template <typename ValueType>
 std::string LinkedList<ValueType>::toString() const {
     std::ostringstream os;
     os << *this;
     return os.str();
+}
+
+template <typename ValueType>
+unsigned int LinkedList<ValueType>::version() const {
+    return m_version;
 }
 
 /*
@@ -814,6 +1098,7 @@ void LinkedList<ValueType>::checkIndex(int index, int min, int max, std::string 
 template <typename ValueType>
 void LinkedList<ValueType>::deepCopy(const LinkedList& src) {
     m_elements = src.m_elements;
+    m_version++;
 }
 
 /*
@@ -877,26 +1162,7 @@ const T& randomElement(const LinkedList<T>& list) {
  */
 template <typename T>
 void shuffle(LinkedList<T>& list) {
-    // actually shuffle a vector to avoid O(N^2) runtime
-    // at the cost of O(N) extra memory usage
-    std::vector<T> vec;
-    for (T element : list) {
-        vec.push_back(element);
-    }
-    for (int i = 0, length = vec.size(); i < length; i++) {
-        int j = randomInteger(i, length - 1);
-        if (i != j) {
-            T temp = vec[i];
-            vec[i] = vec[j];
-            vec[j] = temp;
-        }
-    }
-    list.clear();
-    for (T element : vec) {
-        list.add(element);
-    }
+    list.shuffle();
 }
-
-#include <private/init.h>   // ensure that Stanford C++ lib is initialized
 
 #endif // _linkedlist_h

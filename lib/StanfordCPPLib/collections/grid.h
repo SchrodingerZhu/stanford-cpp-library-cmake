@@ -1,9 +1,17 @@
 /*
- * File: <collections/grid.h>
+ * File: grid.h
  * ------------
  * This file exports the <code>Grid</code> class, which offers a
  * convenient abstraction for representing a two-dimensional array.
  *
+ * @version 2018/03/12
+ * - added overloads that accept GridLocation: get, inBounds, locations, set, operator []
+ * @version 2018/03/10
+ * - added methods front, back, clear
+ * @version 2017/11/14
+ * - added iterator version checking support
+ * @version 2017/10/18
+ * - fix compiler warnings
  * @version 2016/12/09
  * - bug fix in resize method (credit to Liu Ren)
  * @version 2016/09/24
@@ -33,6 +41,12 @@
  *   function to avoid unused-function errors on some newer compilers
  */
 
+#include <private/init.h>   // ensure that Stanford C++ lib is initialized
+
+#ifndef INTERNAL_INCLUDE
+#include <private/initstudent.h>   // insert necessary included code by student
+#endif // INTERNAL_INCLUDE
+
 #ifndef _grid_h
 #define _grid_h
 
@@ -40,12 +54,22 @@
 #include <iostream>
 #include <string>
 #include <sstream>
-#include<collections/collections.h>
-#include <system/error.h>
-#include <collections/hashcode.h>
-#include <util/random.h>
-#include <util/strlib.h>
-#include <collections/vector.h>
+
+#define INTERNAL_INCLUDE 1
+#include <collections.h>
+#define INTERNAL_INCLUDE 1
+#include <error.h>
+#define INTERNAL_INCLUDE 1
+#include <gridlocation.h>
+#define INTERNAL_INCLUDE 1
+#include <hashcode.h>
+#define INTERNAL_INCLUDE 1
+#include <random.h>
+#define INTERNAL_INCLUDE 1
+#include <strlib.h>
+#define INTERNAL_INCLUDE 1
+#include <vector.h>
+#undef INTERNAL_INCLUDE
 
 /*
  * Class: Grid<ValueType>
@@ -102,6 +126,25 @@ public:
      * Frees any heap storage associated with this grid.
      */
     virtual ~Grid();
+    
+    /*
+     * Method: back
+     * Usage: ValueType value = grid.back();
+     * -------------------------------------
+     * Returns the last value in the grid in the order established by the
+     * <code>foreach</code> macro.
+     * This is equivalent to grid[numRows - 1][numCols - 1].
+     * If the grid is empty, generates an error.
+     */
+    ValueType back() const;
+
+    /*
+     * Method: clear
+     * Usage: grid.clear();
+     * --------------------
+     * Sets every value in the grid to its element type's default value.
+     */
+    void clear();
 
     /*
      * Method: equals
@@ -112,7 +155,7 @@ public:
      * Identical in behavior to the == operator.
      */
     bool equals(const Grid<ValueType>& grid2) const;
-
+    
     /*
      * Method: fill
      * Usage: grid.fill(value);
@@ -120,6 +163,16 @@ public:
      * Stores the given value in every cell of this grid.
      */
     void fill(const ValueType& value);
+
+    /*
+     * Method: front
+     * Usage: ValueType value = grid.front();
+     * --------------------------------------
+     * Returns the first value in the grid in the order established by the
+     * <code>foreach</code> macro.  This is equivalent to grid[0][0].
+     * If the grid is empty, generates an error.
+     */
+    ValueType front() const;
 
     /*
      * Method: get
@@ -132,6 +185,8 @@ public:
      */
     ValueType get(int row, int col);
     const ValueType& get(int row, int col) const;
+    ValueType get(const GridLocation& loc);
+    const ValueType& get(const GridLocation& loc) const;
 
     /*
      * Method: height
@@ -140,7 +195,7 @@ public:
      * Returns the grid's height, that is, the number of rows in the grid.
      */
     int height() const;
-
+    
     /*
      * Method: inBounds
      * Usage: if (grid.inBounds(row, col)) ...
@@ -149,6 +204,7 @@ public:
      * is inside the bounds of the grid.
      */
     bool inBounds(int row, int col) const;
+    bool inBounds(const GridLocation& loc) const;
 
     /*
      * Method: isEmpty
@@ -157,6 +213,19 @@ public:
      * Returns <code>true</code> if the grid has 0 rows and/or 0 columns.
      */
     bool isEmpty() const;
+
+    /*
+     * Method: locations
+     * Usage: for (GridLocation loc : grid.locations()) ...
+     * ----------------------------------------------------
+     * Returns a range of (row,col) locations found in this grid.
+     * This allows a nice abstraction for looping over the 2D grid range
+     * of indexes using a single for loop.
+     * By default the locations are arranged in row-major order,
+     * but if you pass the rowMajor parameter of false, the locations will be
+     * returned in column-major order instead.
+     */
+    GridLocationRange locations(bool rowMajor = true) const;
 
     /*
      * Method: mapAll
@@ -228,6 +297,7 @@ public:
      * the grid boundaries.
      */
     void set(int row, int col, const ValueType& value);
+    void set(const GridLocation& loc, const ValueType& value);
 
     /*
      * Method: size
@@ -285,6 +355,8 @@ public:
      */
     GridRow operator [](int row);
     const GridRowConst operator [](int row) const;
+    ValueType& operator [](const GridLocation& loc);
+    const ValueType& operator [](const GridLocation& loc) const;
 
     /*
      * Additional Grid operations
@@ -298,7 +370,7 @@ public:
      *
      * The iteration forms process the grid in row-major order.
      */
-
+    
     /*
      * Operator: ==
      * Usage: if (grid1 == grid2) ...
@@ -314,7 +386,7 @@ public:
      * Compares two grids for inequality.
      */
     bool operator !=(const Grid& grid2) const;
-
+    
     /*
      * Operators: <, >, <=, >=
      * Usage: if (grid1 < grid2) ...
@@ -351,6 +423,7 @@ private:
     ValueType* elements;  /* A dynamic array of the elements   */
     int nRows;            /* The number of rows in the grid    */
     int nCols;            /* The number of columns in the grid */
+    unsigned int m_version = 0;  // structure version for detecting invalid iterators
 
     /* Private method prototypes */
 
@@ -397,6 +470,7 @@ private:
         }
         nRows = grid.nRows;
         nCols = grid.nCols;
+        m_version++;
     }
 
 public:
@@ -421,22 +495,28 @@ public:
      */
     class iterator : public std::iterator<std::input_iterator_tag, ValueType> {
     public:
-        iterator(const Grid* gp, int index) {
-            this->gp = gp;
-            this->index = index;
+        iterator(const Grid* theGp, int theIndex)
+                : gp(theGp),
+                  index(theIndex),
+                  itr_version(theGp->version()) {
+            // empty
         }
 
-        iterator(const iterator& it) {
-            this->gp = it.gp;
-            this->index = it.index;
+        iterator(const iterator& it)
+                : gp(it.gp),
+                  index(it.index),
+                  itr_version(it.itr_version) {
+            // empty
         }
 
         iterator& operator ++() {
+            stanfordcpplib::collections::checkVersion(*gp, *this);
             index++;
             return *this;
         }
 
         iterator operator ++(int) {
+            stanfordcpplib::collections::checkVersion(*gp, *this);
             iterator copy(*this);
             operator++();
             return copy;
@@ -451,16 +531,23 @@ public:
         }
 
         ValueType& operator *() {
+            stanfordcpplib::collections::checkVersion(*gp, *this);
             return gp->elements[index];
         }
 
         ValueType* operator ->() {
+            stanfordcpplib::collections::checkVersion(*gp, *this);
             return &gp->elements[index];
+        }
+
+        unsigned int version() const {
+            return itr_version;
         }
 
     private:
         const Grid* gp;
         int index;
+        unsigned int itr_version;
     };
 
     iterator begin() const {
@@ -470,6 +557,12 @@ public:
     iterator end() const {
         return iterator(this, nRows * nCols);
     }
+
+    /*
+     * Returns the internal version of this collection.
+     * This is used to check for invalid iterators and issue error messages.
+     */
+    unsigned int version() const;
 
     /*
      * Private class: Grid<ValType>::GridRow
@@ -485,6 +578,7 @@ public:
 
         ValueType& operator [](int col) {
             gp->checkIndexes(row, col, gp->nRows-1, gp->nCols-1, "operator [][]");
+            gp->m_version++;
             return gp->elements[(row * gp->nCols) + col];
         }
 
@@ -543,27 +637,27 @@ Grid<ValueType>::Grid()
 }
 
 template <typename ValueType>
-Grid<ValueType>::Grid(int nRows, int nCols)
-    : elements(nullptr),
-      nRows(0),
-      nCols(0) {
-    resize(nRows, nCols);
+Grid<ValueType>::Grid(int numRows, int numCols)
+        : elements(nullptr),
+          nRows(0),
+          nCols(0) {
+    resize(numRows, numCols);
 }
 
 template <typename ValueType>
-Grid<ValueType>::Grid(int nRows, int nCols, const ValueType& value)
-    : elements(nullptr),
-      nRows(0),
-      nCols(0) {
-    resize(nRows, nCols);
+Grid<ValueType>::Grid(int numRows, int numCols, const ValueType& value)
+        : elements(nullptr),
+          nRows(0),
+          nCols(0) {
+    resize(numRows, numCols);
     fill(value);
 }
 
 template <typename ValueType>
 Grid<ValueType>::Grid(std::initializer_list<std::initializer_list<ValueType> > list)
-    : elements(nullptr),
-      nRows(0),
-      nCols(0) {
+        : elements(nullptr),
+          nRows(0),
+          nCols(0) {
     // create the grid at the proper size
     nRows = list.size();
     if (list.begin() != list.end()) {
@@ -574,7 +668,7 @@ Grid<ValueType>::Grid(std::initializer_list<std::initializer_list<ValueType> > l
     // copy the data from the initializer list into the Grid
     auto rowItr = list.begin();
     for (int row = 0; row < nRows; row++) {
-        if ((int) rowItr->size() != nCols) {
+        if (static_cast<int>(rowItr->size()) != nCols) {
             error("Grid::constructor: initializer list is not rectangular (must have same # cols in each row)");
         }
         auto colItr = rowItr->begin();
@@ -595,12 +689,30 @@ Grid<ValueType>::~Grid() {
 }
 
 template <typename ValueType>
+ValueType Grid<ValueType>::back() const {
+    if (isEmpty()) {
+        error("Grid::back: grid is empty");
+    }
+    return get(nRows - 1, nCols - 1);
+}
+
+template <typename ValueType>
+void Grid<ValueType>::clear() {
+    ValueType defaultValue = ValueType();
+    for (int r = 0; r < nRows; r++) {
+        for (int c = 0; c < nCols; c++) {
+            set(r, c, defaultValue);
+        }
+    }
+}
+
+template <typename ValueType>
 bool Grid<ValueType>::equals(const Grid<ValueType>& grid2) const {
     // optimization: if literally same grid, stop
     if (this == &grid2) {
         return true;
     }
-
+    
     if (nRows != grid2.nRows || nCols != grid2.nCols) {
         return false;
     }
@@ -624,6 +736,14 @@ void Grid<ValueType>::fill(const ValueType& value) {
 }
 
 template <typename ValueType>
+ValueType Grid<ValueType>::front() const {
+    if (isEmpty()) {
+        error("Grid::front: grid is empty");
+    }
+    return get(0, 0);
+}
+
+template <typename ValueType>
 ValueType Grid<ValueType>::get(int row, int col) {
     checkIndexes(row, col, nRows-1, nCols-1, "get");
     return elements[(row * nCols) + col];
@@ -633,6 +753,16 @@ template <typename ValueType>
 const ValueType& Grid<ValueType>::get(int row, int col) const {
     checkIndexes(row, col, nRows-1, nCols-1, "get");
     return elements[(row * nCols) + col];
+}
+
+template <typename ValueType>
+ValueType Grid<ValueType>::get(const GridLocation& loc) {
+    return get(loc.row, loc.col);
+}
+
+template <typename ValueType>
+const ValueType& Grid<ValueType>::get(const GridLocation& loc) const {
+    return get(loc.row, loc.col);
 }
 
 template <typename ValueType>
@@ -646,8 +776,18 @@ bool Grid<ValueType>::inBounds(int row, int col) const {
 }
 
 template <typename ValueType>
+bool Grid<ValueType>::inBounds(const GridLocation& loc) const {
+    return inBounds(loc.row, loc.col);
+}
+
+template <typename ValueType>
 bool Grid<ValueType>::isEmpty() const {
     return nRows == 0 || nCols == 0;
+}
+
+template <typename ValueType>
+GridLocationRange Grid<ValueType>::locations(bool rowMajor) const {
+    return GridLocationRange(0, 0, numRows() - 1, numCols() - 1, rowMajor);
 }
 
 template <typename ValueType>
@@ -660,7 +800,7 @@ void Grid<ValueType>::mapAll(void (*fn)(ValueType value)) const {
 }
 
 template <typename ValueType>
-void Grid<ValueType>::mapAll(void (*fn)(const ValueType & value)) const {
+void Grid<ValueType>::mapAll(void (*fn)(const ValueType& value)) const {
     for (int i = 0; i < nRows; i++) {
         for (int j = 0; j < nCols; j++) {
             fn(get(i, j));
@@ -717,51 +857,63 @@ int Grid<ValueType>::numRows() const {
 }
 
 template <typename ValueType>
-void Grid<ValueType>::resize(int nRows, int nCols, bool retain) {
-    if (nRows < 0 || nCols < 0) {
+void Grid<ValueType>::resize(int numRows, int numCols, bool retain) {
+    if (numRows < 0 || numCols < 0) {
         std::ostringstream out;
         out << "Grid::resize: Attempt to resize grid to invalid size ("
-               << nRows << ", " << nCols << ")";
+               << numRows << ", " << numCols << ")";
         error(out.str());
     }
 
+    // optimization: don't do the resize if we are already that size
+    if (numRows == this->nRows && numCols == this->nCols && retain) {
+        return;
+    }
+    
     // save backup of old array/size
     ValueType* oldElements = this->elements;
     int oldnRows = this->nRows;
     int oldnCols = this->nCols;
-
+    
     // create new empty array and set new size
-    this->nRows = nRows;
-    this->nCols = nCols;
-    this->elements = new ValueType[nRows * nCols];
-
+    this->nRows = numRows;
+    this->nCols = numCols;
+    this->elements = new ValueType[numRows * numCols];
+    
     // initialize to empty/default state
     ValueType value = ValueType();
-    for (int i = 0; i < nRows * nCols; i++) {
+    for (int i = 0; i < numRows * numCols; i++) {
         this->elements[i] = value;
     }
-
+    
     // possibly retain old contents
     if (retain) {
-        int minRows = oldnRows < nRows ? oldnRows : nRows;
-        int minCols = oldnCols < nCols ? oldnCols : nCols;
+        int minRows = oldnRows < numRows ? oldnRows : numRows;
+        int minCols = oldnCols < numCols ? oldnCols : numCols;
         for (int row = 0; row < minRows; row++) {
             for (int col = 0; col < minCols; col++) {
-                this->elements[(row * nCols) + col] = oldElements[(row * oldnCols) + col];
+                this->elements[(row * numCols) + col] = oldElements[(row * oldnCols) + col];
             }
         }
     }
-
+    
     // free old array memory
     if (oldElements) {
         delete[] oldElements;
     }
+    m_version++;
 }
 
 template <typename ValueType>
 void Grid<ValueType>::set(int row, int col, const ValueType& value) {
-    checkIndexes(row, col, nRows-1, nCols-1, "set");
+    checkIndexes(row, col, nRows - 1, nCols - 1, "set");
     elements[(row * nCols) + col] = value;
+    m_version++;
+}
+
+template <typename ValueType>
+void Grid<ValueType>::set(const GridLocation& loc, const ValueType& value) {
+    set(loc.row, loc.col, value);
 }
 
 template <typename ValueType>
@@ -777,23 +929,28 @@ std::string Grid<ValueType>::toString() const {
 }
 
 template <typename ValueType>
+unsigned int Grid<ValueType>::version() const {
+    return m_version;
+}
+
+template <typename ValueType>
 std::string Grid<ValueType>::toString2D(
         std::string rowStart, std::string rowEnd,
         std::string colSeparator, std::string rowSeparator) const {
     std::ostringstream os;
     os << rowStart;
-    int nRows = numRows();
-    int nCols = numCols();
-    for (int i = 0; i < nRows; i++) {
+    int nr = numRows();
+    int nc = numCols();
+    for (int i = 0; i < nr ; i++) {
         if (i > 0) {
             os << rowSeparator;
         }
         os << rowStart;
-        for (int j = 0; j < nCols; j++) {
+        for (int j = 0; j < nc; j++) {
             if (j > 0) {
                 os << colSeparator;
             }
-            writeGenericValue(os, get(i, j), true);
+            writeGenericValue(os, get(i, j), /* forceQuotes */ true);
         }
         os << rowEnd;
     }
@@ -812,9 +969,21 @@ typename Grid<ValueType>::GridRow Grid<ValueType>::operator [](int row) {
 }
 
 template <typename ValueType>
+ValueType& Grid<ValueType>::operator [](const GridLocation& loc) {
+    checkIndexes(loc.row, loc.col, nRows-1, nCols-1, "operator []");
+    return elements[(loc.row * nCols) + loc.col];
+}
+
+template <typename ValueType>
 const typename Grid<ValueType>::GridRowConst
 Grid<ValueType>::operator [](int row) const {
     return GridRowConst(const_cast<Grid*>(this), row);
+}
+
+template <typename ValueType>
+const ValueType& Grid<ValueType>::operator [](const GridLocation& loc) const {
+    checkIndexes(loc.row, loc.col, nRows-1, nCols-1, "operator []");
+    return elements[(loc.row * nCols) + loc.col];
 }
 
 template <typename ValueType>
@@ -883,13 +1052,13 @@ int Grid<ValueType>::gridCompare(const Grid& grid2) const {
             } else if (r >= h2) {
                 return 1;
             }
-
+            
             if (c >= w1) {
                 return -1;
             } else if (c >= w2) {
                 return 1;
             }
-
+            
             if (get(r, c) < grid2.get(r, c)) {
                 return -1;
             } else if (grid2.get(r, c) < get(r, c)) {
@@ -997,7 +1166,5 @@ void shuffle(Grid<T>& grid) {
         }
     }
 }
-
-#include <private/init.h>   // ensure that Stanford C++ lib is initialized
 
 #endif // _grid_h

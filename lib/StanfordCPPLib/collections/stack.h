@@ -4,6 +4,8 @@
  * This file exports the <code>Stack</code> class, which implements
  * a collection that processes values in a last-in/first-out (LIFO) order.
  * 
+ * @version 2016/12/09
+ * - added iterator version checking support (implicitly via Vector)
  * @version 2016/09/24
  * - refactored to use collections.h utility functions
  * - made const iterators public
@@ -18,15 +20,25 @@
  * - added template hashCode function
  */
 
+#include <private/init.h>   // ensure that Stanford C++ lib is initialized
+
+#ifndef INTERNAL_INCLUDE
+#include <private/initstudent.h>   // insert necessary included code by student
+#endif // INTERNAL_INCLUDE
+
 #ifndef _stack_h
 #define _stack_h
 
 #include <initializer_list>
 #include <iterator>
-#include <stack>
-#include <system/error.h>
-#include <collections/hashcode.h>
-#include <collections/vector.h>
+
+#define INTERNAL_INCLUDE 1
+#include <error.h>
+#define INTERNAL_INCLUDE 1
+#include <hashcode.h>
+#define INTERNAL_INCLUDE 1
+#include <vector.h>
+#undef INTERNAL_INCLUDE
 
 /*
  * Class: Stack<ValueType>
@@ -153,11 +165,6 @@ public:
      * by reference.
      */
     ValueType& top();
-    
-    /*
-     * Returns an STL stack object with the same elements as this Stack.
-     */
-    std::stack<ValueType> toStlStack() const;
 
     /*
      * Method: toString
@@ -364,15 +371,6 @@ ValueType & Stack<ValueType>::top() {
 }
 
 template <typename ValueType>
-std::stack<ValueType> Stack<ValueType>::toStlStack() const {
-    std::stack<ValueType> result;
-    for (int i = 0; i < size(); i++) {
-        result.push(this->elements[i]);
-    }
-    return result;
-}
-
-template <typename ValueType>
 std::string Stack<ValueType>::toString() const {
     std::ostringstream os;
     os << *this;
@@ -428,7 +426,5 @@ template <typename T>
 int hashCode(const Stack<T>& s) {
     return hashCode(s.elements);
 }
-
-#include <private/init.h>   // ensure that Stanford C++ lib is initialized
 
 #endif // _stack_h

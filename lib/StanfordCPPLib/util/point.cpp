@@ -3,16 +3,22 @@
  * ---------------
  * This file implements the point.h interface.
  * 
+ * @version 2018/11/22
+ * - added headless mode support
  * @version 2017/09/29
  * - updated to use composite hashCode function
  * @version 2014/10/08
  * - removed 'using namespace' statement
  */
 
-#include <util/point.h>
+#define INTERNAL_INCLUDE 1
+#include <point.h>
 #include <string>
-#include <collections/hashcode.h>
-#include <util/strlib.h>
+#define INTERNAL_INCLUDE 1
+#include <gtypes.h>
+#define INTERNAL_INCLUDE 1
+#include <hashcode.h>
+#undef INTERNAL_INCLUDE
 
 Point::Point() {
     x = 0;
@@ -24,6 +30,13 @@ Point::Point(int x, int y) {
     this->y = y;
 }
 
+#ifndef SPL_HEADLESS_MODE
+Point::Point(const GPoint& point) {
+    this->x = (int) point.getX();
+    this->y = (int) point.getY();
+}
+#endif // SPL_HEADLESS_MODE
+
 int Point::getX() const {
     return x;
 }
@@ -33,7 +46,7 @@ int Point::getY() const {
 }
 
 std::string Point::toString() const {
-    return "(" + integerToString(x) + "," + integerToString(y) + ")";
+    return "(" + std::to_string(x) + "," + std::to_string(y) + ")";
 }
 
 bool Point::operator ==(const Point& p2) const {
@@ -49,5 +62,5 @@ std::ostream& operator <<(std::ostream& os, const Point& pt) {
 }
 
 int hashCode(const Point& pt) {
-    return hashCode2(pt.getX(), pt.getY());
+    return hashCode(pt.getX(), pt.getY());
 }

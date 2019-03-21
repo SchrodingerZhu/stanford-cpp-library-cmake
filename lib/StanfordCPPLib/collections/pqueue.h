@@ -9,5 +9,5 @@
 
 #ifndef _pqueue_h
 #define _pqueue_h
-#include "priorityqueue.h"
+#include <priorityqueue.h>
 #endif // _pqueue_h
