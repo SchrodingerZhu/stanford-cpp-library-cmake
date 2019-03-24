@@ -116,15 +116,15 @@ call_stack::call_stack(const size_t /*num_discard = 0*/) {
         LPEXCEPTION_POINTERS exceptionInfo = (LPEXCEPTION_POINTERS) fakeStackPtr;
         if (exceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_STACK_OVERFLOW) {
             // can't do stack walking in Windows when a stack overflow happens :-/
-            traceVector.push_back((void*) exceptionInfo->ContextRecord->Eip);
+            traceVector.push_back((void*) exceptionInfo->ContextRecord->Rip);
         } else {
             SymInitialize(GetCurrentProcess(), nullptr, TRUE);
             STACKFRAME frame = {0};
-            frame.AddrPC.Offset    = exceptionInfo->ContextRecord->Eip;
+            frame.AddrPC.Offset    = exceptionInfo->ContextRecord->Rip;
             frame.AddrPC.Mode      = AddrModeFlat;
-            frame.AddrStack.Offset = exceptionInfo->ContextRecord->Esp;
+            frame.AddrStack.Offset = exceptionInfo->ContextRecord->Rsp;
             frame.AddrStack.Mode   = AddrModeFlat;
-            frame.AddrFrame.Offset = exceptionInfo->ContextRecord->Ebp;
+            frame.AddrFrame.Offset = exceptionInfo->ContextRecord->Rbp;
             frame.AddrFrame.Mode   = AddrModeFlat;
             while ((int) traceVector.size() < STATIC_VARIABLE(STACK_FRAMES_MAX) &&
                    StackWalk(IMAGE_FILE_MACHINE_I386,

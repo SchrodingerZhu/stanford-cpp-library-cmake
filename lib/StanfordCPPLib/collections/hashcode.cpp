@@ -87,7 +87,7 @@ int hashCode(unsigned short key) {
  * overloads just treats the pointer value numerically.
  */
 int hashCode(void* key) {
-    return hashCode(reinterpret_cast<long>(key));
+    return hashCode((long)reinterpret_cast<std::ptrdiff_t>(key));
 }
 
 /*
